@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Infogempa>
+ <gempa>
+  <eventid>bmg2026swgz</eventid>
+  <status>confirmed</status>
+  <waktu>2026/09/26  08:10:21.751</waktu>
+  <lintang>-8.16</lintang>
+  <bujur>120.23</bujur>
+  <dalam>10</dalam>
+  <mag>3.2</mag>
+  <fokal>undetermined</fokal>
+  <area>Flores Region, Indonesia</area>
+ </gempa>
+ <gempa>
+  <eventid>bmg2026swfl</eventid>
+  <status>confirmed</status>
+  <waktu>2026/09/26  07:22:19.405</waktu>
+  <lintang>-22.01</lintang>
+  <bujur>168.88</bujur>
+  <dalam>10</dalam>
+  <mag>5.5</mag>
+  <fokal>undetermined</fokal>
+  <area>New Caledonia</area>
+ </gempa>
+ <gempa>
+  <eventid>bmg2026svzp</eventid>
+  <status>confirmed</status>
+  <waktu>2026/09/26  04:26:21.915</waktu>
+  <lintang>-10.27</lintang>
+  <bujur>124.31</bujur>
+  <dalam>24</dalam>
+  <mag>3.5</mag>
+  <fokal>undetermined</fokal>
+  <area>Timor Region</area>
+ </gempa>
+</Infogempa>

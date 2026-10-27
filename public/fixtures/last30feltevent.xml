@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>Indonesia-InaTEWS-felthistory-Eq-20260926023929</identifier>
+  <sender>inatews@bmkg.go.id</sender>
+  <sent>2026-09-26T02:39:29WIB</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <code>profile:BMKG-Versi:1</code>
+  <info>
+     <event>Gempabumi</event>
+     <date>26-09-26</date>
+     <time>02:39:29 WIB</time>
+     <point><coordinates>120.31,-8.23</coordinates></point>
+     <latitude>8.23 LS</latitude>
+     <longitude>120.31 BT</longitude>
+     <magnitude>4.9</magnitude>
+     <depth>9 Km</depth>
+     <area>Pusat gempa berada di laut 46 km utara Ruteng-Manggarai</area>
+     <eventid>20260926023929</eventid>
+     <potential>Gempa ini dirasakan untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Gempa dirasakan</subject>
+     <headline>Info Gempa dirasakan Mag:4.9, 26-Sep-26 02:39:29 WIB, Lok:8.23 LS, 120.31 BT (Pusat gempa berada di laut 46 km utara Ruteng-Manggarai), Kedlmn:9 Km ::BMKG</headline>
+     <description>Telah terjadi gempabumi mag:4.9, lokasi:Pusat gempa berada di laut 46 km utara Ruteng-Manggarai, waktu:26-Sep-26 02:39:29 WIB, kedlmn:9 Km, gempa ini dirasakan(MMI):II - III Kab. Manggarai</description>
+     <instruction>Hati-hati terhadap gempabumi susulan yang mungkin terjadi</instruction>
+     <shakemap>20260926023929.mmi.jpg</shakemap>
+     <felt>II - III Kab. Manggarai</felt>
+     <timesent>26/09/2026 02:44:29WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>25-09-26</date>
+     <time>20:47:30 WIB</time>
+     <point><coordinates>105.22,-7.04</coordinates></point>
+     <latitude>7.04 LS</latitude>
+     <longitude>105.22 BT</longitude>
+     <magnitude>4.7</magnitude>
+     <depth>10 Km</depth>
+     <area>Pusat gempa berada di laut 58 km barat daya Sumur</area>
+     <eventid>20260925204730</eventid>
+     <potential>Gempa ini dirasakan untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Gempa dirasakan</subject>
+     <headline>Info Gempa dirasakan Mag:4.7, 25-Sep-26 20:47:30 WIB, Lok:7.04 LS, 105.22 BT (Pusat gempa berada di laut 58 km barat daya Sumur), Kedlmn:10 Km ::BMKG</headline>
+     <description>Telah terjadi gempabumi mag:4.7, lokasi:Pusat gempa berada di laut 58 km barat daya Sumur, waktu:25-Sep-26 20:47:30 WIB, kedlmn:10 Km, gempa ini dirasakan(MMI):III Sumur, III Muara Binuangeun, III Bayah, III Panggarangan, III Malingping, II - III Anyer, II - III Rangkasbitung</description>
+     <instruction>Hati-hati terhadap gempabumi susulan yang mungkin terjadi</instruction>
+     <shakemap>20260925204730.mmi.jpg</shakemap>
+     <felt>III Sumur, III Muara Binuangeun, III Bayah, III Panggarangan, III Malingping, II - III Anyer, II - III Rangkasbitung</felt>
+     <timesent>25/09/2026 20:52:30WIB</timesent>
+  </info>
+</alert>

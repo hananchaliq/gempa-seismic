@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>Indonesia-InaTEWS-history-20260820163345</identifier>
+  <sender>inatews@bmkg.go.id</sender>
+  <sent>2026-09-22T06:51:06WIB</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <code>profile:BMKG-Versi:1</code>
+  <info>
+     <event>Gempabumi</event>
+     <date>22-09-26</date>
+     <time>06:48:13 WIB</time>
+     <point><coordinates>125.30,4.74</coordinates></point>
+     <latitude>4.74 LU</latitude>
+     <longitude>125.30 BT</longitude>
+     <magnitude>5.2</magnitude>
+     <depth>10 Km</depth>
+     <area>127 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT</area>
+     <eventid>20260922065106</eventid>
+     <potential>tidak berpotensi TSUNAMI</potential>
+     <subject>Gempa M>5</subject>
+     <headline>Info Gempa Mag:5.2, 22-Sep-26 06:48:13 WIB, Lok:4.74 LU, 125.30 BT (127 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT), Kedlmn:10 Km ::BMKG</headline>
+     <description>Telah terjadi gempabumi dengan kekuatan:5.2, lokasi: 127 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT, waktu:22-Sep-26 06:48:13 WIB, Gempa ini tidak berpotensi TSUNAMI</description>
+     <instruction>Hati-hati terhadap gempabumi susulan yang mungkin terjadi</instruction>
+     <shakemap>20260922065106.mmi.jpg</shakemap>
+     <timesent>22/09/2026 06:51:06WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>21-09-26</date>
+     <time>14:31:07 WIB</time>
+     <point><coordinates>122.45,-0.70</coordinates></point>
+     <latitude>0.70 LS</latitude>
+     <longitude>122.45 BT</longitude>
+     <magnitude>5.3</magnitude>
+     <depth>10 Km</depth>
+     <area>26 km BaratDaya PULAUPUAH-SULTENG</area>
+     <eventid>20260921143335</eventid>
+     <potential>tidak berpotensi TSUNAMI</potential>
+     <subject>Gempa M>5</subject>
+     <headline>Info Gempa Mag:5.3, 21-Sep-26 14:31:07 WIB, Lok:0.70 LS, 122.45 BT (26 km BaratDaya PULAUPUAH-SULTENG), Kedlmn:10 Km ::BMKG</headline>
+     <description>Telah terjadi gempabumi dengan kekuatan:5.3, lokasi: 26 km BaratDaya PULAUPUAH-SULTENG, waktu:21-Sep-26 14:31:07 WIB, Gempa ini tidak berpotensi TSUNAMI</description>
+     <instruction>Hati-hati terhadap gempabumi susulan yang mungkin terjadi</instruction>
+     <shakemap>20260921143335.mmi.jpg</shakemap>
+     <timesent>21/09/2026 14:33:35WIB</timesent>
+  </info>
+</alert>

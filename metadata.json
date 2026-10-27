@@ -1,0 +1,6 @@
+{
+  "name": "SEISMA — Seismic Intelligence & Earthquake Visualization Platform",
+  "description": "Platform pemantauan dan eksplorasi informasi gempa bumi Indonesia dan global berbasis data resmi BMKG dan USGS dengan visualisasi globe 3D, peta geospasial interaktif, dan analisis statistik.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

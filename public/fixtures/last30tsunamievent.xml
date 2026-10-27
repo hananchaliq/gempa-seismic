@@ -1,0 +1,1226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>Indonesia-InaTEWS-history-20260815073130</identifier>
+  <sender>inatews@bmkg.go.id</sender>
+  <sent>2026-08-15T07:31:30WIB</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <code>profile:BMKG-Versi:1</code>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815073130</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-4</subject>
+     <headline>Peringatan Dini TSUNAMI yang disebabkan oleh gempa Mag:7.7, 15-Agu-26 04:58:24 WIB, dinyatakan telah berakhir::BMKG</headline>
+     <description>Peringatan Dini TSUNAMI yang disebabkan oleh gempa Mag:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB, dinyatakan telah berakhir, demikian informasi terakhir disampaikan oleh Sistem Peringatan Dini Tsunami Indonesia,kecuali ada informasi baru</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815073130.mmi.jpg</shakemap>
+     <wzmap>20260815073130.wz.png</wzmap>
+     <ttmap>20260815073130.tt.png</ttmap>
+     <sshmap>20260815073130.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <timesent>15/08/2026 07:31:30WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815070532</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-3.4</subject>
+     <headline>Pemutakhiran Peringatan Dini, Tsunami akibat gempa Mag:7.7 (30 km TimurLaut MBAY-NAGEKEO-NTT), telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, BAUBAU(05:47WIB)0.30m, BULUKUMBA(05:58WIB)0.54m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, KOLAKA(06:27WIB)0.23m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m::BMKG</headline>
+     <description>Pemutakhiran Peringatan Dini, Tsunami akibat gempa dengan kekuatan:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB, telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, BAUBAU(05:47WIB)0.30m, BULUKUMBA(05:58WIB)0.54m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, KOLAKA(06:27WIB)0.23m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815070532.mmi.jpg</shakemap>
+     <wzmap>20260815070532.wz.png</wzmap>
+     <ttmap>20260815070532.tt.png</ttmap>
+     <sshmap>20260815070532.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI-BARAT BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>SELAYAR</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:04:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>ENDE BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:05:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>SIKKA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:13:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>JENEPONTO</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BANTAENG</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:46:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU ENDE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU SIKKA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:07:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU SANGIANG</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:09:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU GILI</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:12:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>KOTA-BIMA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:14:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>FLORES-TIMUR BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>DOMPU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:19:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULTRA</province>
+        <district>KOTA-BAU-BAU</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:40:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>TAKALAR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:43:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BONE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:54:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>WAJO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN TIMUR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:36:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:39:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>KOTA-PALOPO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:41:23 WIB</time>
+     </wzarea>
+     <obsarea>
+        <location>BAKALANG-ALOR</location>
+        <loclatitude>-8.26</loclatitude>
+        <loclongitude>124.23</loclongitude>
+        <height>0.14</height>
+        <date>15-08-2026</date>
+        <time>05:41 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>BAUBAU</location>
+        <loclatitude>-5.45</loclatitude>
+        <loclongitude>122.59</loclongitude>
+        <height>0.30</height>
+        <date>15-08-2026</date>
+        <time>05:47 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>BULUKUMBA</location>
+        <loclatitude>-5.54</loclatitude>
+        <loclongitude>120.21</loclongitude>
+        <height>0.54</height>
+        <date>15-08-2026</date>
+        <time>05:58 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>DOMPU</location>
+        <loclatitude>-8.30</loclatitude>
+        <loclongitude>118.38</loclongitude>
+        <height>0.17</height>
+        <date>15-08-2026</date>
+        <time>05:29 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>FLORESTIMUR</location>
+        <loclatitude>-8.27</loclatitude>
+        <loclongitude>123.09</loclongitude>
+        <height>0.25</height>
+        <date>15-08-2026</date>
+        <time>05:24 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>KOLAKA</location>
+        <loclatitude>-4.05</loclatitude>
+        <loclongitude>121.57</loclongitude>
+        <height>0.23</height>
+        <date>15-08-2026</date>
+        <time>06:27 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>LABUANBAJO</location>
+        <loclatitude>-8.49</loclatitude>
+        <loclongitude>119.87</loclongitude>
+        <height>0.36</height>
+        <date>15-08-2026</date>
+        <time>05:26 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>MAUROLE-ENDE</location>
+        <loclatitude>-8.50</loclatitude>
+        <loclongitude>121.81</loclongitude>
+        <height>0.94</height>
+        <date>15-08-2026</date>
+        <time>05:27 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>PELABUHANKEWAPANTE-SIKKA</location>
+        <loclatitude>-8.64</loclatitude>
+        <loclongitude>122.29</loclongitude>
+        <height>0.38</height>
+        <date>15-08-2026</date>
+        <time>05:16 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>SIKKA</location>
+        <loclatitude>-8.30</loclatitude>
+        <loclongitude>121.73</loclongitude>
+        <height>0.19</height>
+        <date>15-08-2026</date>
+        <time>05:03 WIB</time>
+     </obsarea>
+     <timesent>15/08/2026 07:05:32WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815064918</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-3.3</subject>
+     <headline>Pemutakhiran Peringatan Dini, Tsunami akibat gempa Mag:7.7 (30 km TimurLaut MBAY-NAGEKEO-NTT), telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, BAUBAU(05:47WIB)0.30m, BULUKUMBA(05:58WIB)0.54m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m::BMKG</headline>
+     <description>Pemutakhiran Peringatan Dini, Tsunami akibat gempa dengan kekuatan:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB, telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, BAUBAU(05:47WIB)0.30m, BULUKUMBA(05:58WIB)0.54m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815064918.mmi.jpg</shakemap>
+     <wzmap>20260815064918.wz.png</wzmap>
+     <ttmap>20260815064918.tt.png</ttmap>
+     <sshmap>20260815064918.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI-BARAT BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>SELAYAR</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:04:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>ENDE BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:05:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>SIKKA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:13:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>JENEPONTO</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BANTAENG</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:46:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU ENDE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU SIKKA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:07:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU SANGIANG</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:09:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU GILI</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:12:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>KOTA-BIMA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:14:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>FLORES-TIMUR BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>DOMPU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:19:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULTRA</province>
+        <district>KOTA-BAU-BAU</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:40:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>TAKALAR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:43:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BONE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:54:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>WAJO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN TIMUR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:36:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:39:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>KOTA-PALOPO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:41:23 WIB</time>
+     </wzarea>
+     <obsarea>
+        <location>BAKALANG-ALOR</location>
+        <loclatitude>-8.26</loclatitude>
+        <loclongitude>124.23</loclongitude>
+        <height>0.14</height>
+        <date>15-08-2026</date>
+        <time>05:41 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>BAUBAU</location>
+        <loclatitude>-5.45</loclatitude>
+        <loclongitude>122.59</loclongitude>
+        <height>0.30</height>
+        <date>15-08-2026</date>
+        <time>05:47 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>BULUKUMBA</location>
+        <loclatitude>-5.54</loclatitude>
+        <loclongitude>120.21</loclongitude>
+        <height>0.54</height>
+        <date>15-08-2026</date>
+        <time>05:58 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>DOMPU</location>
+        <loclatitude>-8.30</loclatitude>
+        <loclongitude>118.38</loclongitude>
+        <height>0.17</height>
+        <date>15-08-2026</date>
+        <time>05:29 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>FLORESTIMUR</location>
+        <loclatitude>-8.27</loclatitude>
+        <loclongitude>123.09</loclongitude>
+        <height>0.25</height>
+        <date>15-08-2026</date>
+        <time>05:24 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>LABUANBAJO</location>
+        <loclatitude>-8.49</loclatitude>
+        <loclongitude>119.87</loclongitude>
+        <height>0.36</height>
+        <date>15-08-2026</date>
+        <time>05:26 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>MAUROLE-ENDE</location>
+        <loclatitude>-8.50</loclatitude>
+        <loclongitude>121.81</loclongitude>
+        <height>0.94</height>
+        <date>15-08-2026</date>
+        <time>05:27 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>PELABUHANKEWAPANTE-SIKKA</location>
+        <loclatitude>-8.64</loclatitude>
+        <loclongitude>122.29</loclongitude>
+        <height>0.38</height>
+        <date>15-08-2026</date>
+        <time>05:16 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>SIKKA</location>
+        <loclatitude>-8.30</loclatitude>
+        <loclongitude>121.73</loclongitude>
+        <height>0.19</height>
+        <date>15-08-2026</date>
+        <time>05:03 WIB</time>
+     </obsarea>
+     <timesent>15/08/2026 06:49:18WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815062839</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-3.2</subject>
+     <headline>Pemutakhiran Peringatan Dini, Tsunami akibat gempa Mag:7.7 (30 km TimurLaut MBAY-NAGEKEO-NTT), telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m::BMKG</headline>
+     <description>Pemutakhiran Peringatan Dini, Tsunami akibat gempa dengan kekuatan:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB, telah terdeteksi di  BAKALANG-ALOR(05:41WIB)0.14m, DOMPU(05:29WIB)0.17m, FLORESTIMUR(05:24WIB)0.25m, LABUANBAJO(05:26WIB)0.36m, MAUROLE-ENDE(05:27WIB)0.94m, PELABUHANKEWAPANTE-SIKKA(05:16WIB)0.38m, SIKKA(05:03WIB)0.19m</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815062839.mmi.jpg</shakemap>
+     <wzmap>20260815062839.wz.png</wzmap>
+     <ttmap>20260815062839.tt.png</ttmap>
+     <sshmap>20260815062839.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI-BARAT BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>SELAYAR</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:04:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>ENDE BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:05:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>SIKKA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:13:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>JENEPONTO</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BANTAENG</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:46:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU ENDE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU SIKKA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:07:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU SANGIANG</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:09:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU GILI</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:12:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>KOTA-BIMA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:14:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>FLORES-TIMUR BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>DOMPU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:19:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULTRA</province>
+        <district>KOTA-BAU-BAU</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:40:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>TAKALAR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:43:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BONE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:54:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>WAJO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN TIMUR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:36:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:39:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>KOTA-PALOPO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:41:23 WIB</time>
+     </wzarea>
+     <obsarea>
+        <location>BAKALANG-ALOR</location>
+        <loclatitude>124.23</loclatitude>
+        <loclongitude>-8.26</loclongitude>
+        <height>0.14</height>
+        <date>15-08-2026</date>
+        <time>05:41 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>DOMPU</location>
+        <loclatitude>118.38</loclatitude>
+        <loclongitude>-8.30</loclongitude>
+        <height>0.17</height>
+        <date>15-08-2026</date>
+        <time>05:29 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>FLORESTIMUR</location>
+        <loclatitude>123.09</loclatitude>
+        <loclongitude>-8.27</loclongitude>
+        <height>0.25</height>
+        <date>15-08-2026</date>
+        <time>05:24 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>LABUANBAJO</location>
+        <loclatitude>119.87</loclatitude>
+        <loclongitude>-8.49</loclongitude>
+        <height>0.36</height>
+        <date>15-08-2026</date>
+        <time>05:26 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>MAUROLE-ENDE</location>
+        <loclatitude>121.81</loclatitude>
+        <loclongitude>-8.50</loclongitude>
+        <height>0.94</height>
+        <date>15-08-2026</date>
+        <time>05:27 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>PELABUHANKEWAPANTE-SIKKA</location>
+        <loclatitude>122.29</loclatitude>
+        <loclongitude>-8.64</loclongitude>
+        <height>0.38</height>
+        <date>15-08-2026</date>
+        <time>05:16 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>SIKKA</location>
+        <loclatitude>121.73</loclatitude>
+        <loclongitude>-8.30</loclongitude>
+        <height>0.19</height>
+        <date>15-08-2026</date>
+        <time>05:03 WIB</time>
+     </obsarea>
+     <timesent>15/08/2026 06:28:39WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815054948</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-3.1</subject>
+     <headline>Pemutakhiran Peringatan Dini, Tsunami akibat gempa Mag:7.7 (30 km TimurLaut MBAY-NAGEKEO-NTT), telah terdeteksi di  DOMPU(05:29WIB)0.17m, LABUANBAJO(05:26WIB)0.36m, SIKKA(05:03WIB)0.19m::BMKG</headline>
+     <description>Pemutakhiran Peringatan Dini, Tsunami akibat gempa dengan kekuatan:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB, telah terdeteksi di  DOMPU(05:29WIB)0.17m, LABUANBAJO(05:26WIB)0.36m, SIKKA(05:03WIB)0.19m</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815054948.mmi.jpg</shakemap>
+     <wzmap>20260815054948.wz.png</wzmap>
+     <ttmap>20260815054948.tt.png</ttmap>
+     <sshmap>20260815054948.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI-BARAT BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>SELAYAR</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:04:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>ENDE BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:05:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>SIKKA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:13:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>JENEPONTO</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BANTAENG</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:46:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU ENDE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU SIKKA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:07:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU SANGIANG</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:09:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU GILI</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:12:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>KOTA-BIMA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:14:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>FLORES-TIMUR BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>DOMPU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:19:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULTRA</province>
+        <district>KOTA-BAU-BAU</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:40:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>TAKALAR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:43:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BONE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:54:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>WAJO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN TIMUR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:36:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:39:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>KOTA-PALOPO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:41:23 WIB</time>
+     </wzarea>
+     <obsarea>
+        <location>DOMPU</location>
+        <loclatitude>118.38</loclatitude>
+        <loclongitude>-8.30</loclongitude>
+        <height>0.17</height>
+        <date>15-08-2026</date>
+        <time>05:29 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>LABUANBAJO</location>
+        <loclatitude>119.87</loclatitude>
+        <loclongitude>-8.49</loclongitude>
+        <height>0.36</height>
+        <date>15-08-2026</date>
+        <time>05:26 WIB</time>
+     </obsarea>
+     <obsarea>
+        <location>SIKKA</location>
+        <loclatitude>121.73</loclatitude>
+        <loclongitude>-8.30</loclongitude>
+        <height>0.19</height>
+        <date>15-08-2026</date>
+        <time>05:03 WIB</time>
+     </obsarea>
+     <timesent>15/08/2026 05:49:48WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:24 WIB</time>
+     <point><coordinates>121.39,-8.41</coordinates></point>
+     <latitude>8.41 LS</latitude>
+     <longitude>121.39 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>15 Km</depth>
+     <area>30 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815050954</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-2</subject>
+     <headline>Pemutakhiran Peringatan Dini Tsunami untuk wilayah: NTB, NTT, SULSEL, SULTRA, Gempa Mag:7.7, 15-Agu-26 04:58:24 WIB, Lok:8.41 LS, 121.39 BT (30 km TimurLaut MBAY-NAGEKEO-NTT), Kedlmn:15 Km ::BMKG</headline>
+     <description>Pemutakhiran Peringatan Dini Tsunami, telah terjadi gempabumi dengan kekuatan:7.7, lokasi: 30 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:24 WIB,  berpotensi Tsunami di wilayah: NTB, NTT, SULSEL, SULTRA</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815050954.mmi.jpg</shakemap>
+     <wzmap>20260815050954.wz.png</wzmap>
+     <ttmap>20260815050954.tt.png</ttmap>
+     <sshmap>20260815050954.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:02:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>MANGGARAI-BARAT BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>SELAYAR</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:04:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>ENDE BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:05:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>SIKKA BAGIAN UTARA</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:13:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>JENEPONTO</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BANTAENG</district>
+        <level>SIAGA</level>
+        <date>15-08-2026</date>
+        <time>05:46:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU ENDE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:03:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>PULAU SIKKA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:07:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU SANGIANG</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:09:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>BIMA PULAU GILI</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:12:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>KOTA-BIMA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:14:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>FLORES-TIMUR BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:15:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTB</province>
+        <district>DOMPU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:19:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULTRA</province>
+        <district>KOTA-BAU-BAU</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:40:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>TAKALAR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:43:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>BONE</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:54:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>WAJO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN TIMUR</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:36:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>LUWU BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:39:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>SULSEL</province>
+        <district>KOTA-PALOPO</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>06:41:23 WIB</time>
+     </wzarea>
+     <timesent>15/08/2026 05:09:54WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>15-08-26</date>
+     <time>04:58:23 WIB</time>
+     <point><coordinates>121.32,-8.33</coordinates></point>
+     <latitude>8.33 LS</latitude>
+     <longitude>121.32 BT</longitude>
+     <magnitude>7.0</magnitude>
+     <depth>10 Km</depth>
+     <area>38 km TimurLaut MBAY-NAGEKEO-NTT</area>
+     <eventid>20260815050037</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-1</subject>
+     <headline>Peringatan Dini Tsunami untuk wilayah: NTT, Gempa Mag:7.0, 15-Agu-26 04:58:23 WIB, Lok:8.33 LS, 121.32 BT (38 km TimurLaut MBAY-NAGEKEO-NTT), Kedlmn:10 Km ::BMKG</headline>
+     <description>Peringatan Dini Tsunami, telah terjadi gempabumi dengan kekuatan:7.0, lokasi: 38 km TimurLaut MBAY-NAGEKEO-NTT, waktu:15-Agu-26 04:58:23 WIB,  berpotensi Tsunami di wilayah: NTT</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260815050037.mmi.jpg</shakemap>
+     <wzmap>20260815050037.wz.png</wzmap>
+     <ttmap>20260815050037.tt.png</ttmap>
+     <sshmap>20260815050037.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:01:23 WIB</time>
+     </wzarea>
+     <wzarea>
+        <province>NTT</province>
+        <district>NGADA BAGIAN UTARA</district>
+        <level>WASPADA</level>
+        <date>15-08-2026</date>
+        <time>05:01:23 WIB</time>
+     </wzarea>
+     <timesent>15/08/2026 05:00:37WIB</timesent>
+  </info>
+  <info>
+     <event>Gempabumi</event>
+     <date>08-06-26</date>
+     <time>06:37:42 WIB</time>
+     <point><coordinates>125.14,5.79</coordinates></point>
+     <latitude>5.79 LU</latitude>
+     <longitude>125.14 BT</longitude>
+     <magnitude>7.7</magnitude>
+     <depth>47 Km</depth>
+     <area>244 km BaratLaut PULAUKARATUNG-SULUT</area>
+     <eventid>20260608101548</eventid>
+     <potential>Potensi TSUNAMI untuk diteruskan pada masyarakat</potential>
+     <subject>Warning Tsunami PD-4</subject>
+     <headline>Peringatan Dini TSUNAMI yang disebabkan oleh gempa Mag:7.7, 08-Jun-26 06:37:42 WIB, dinyatakan telah berakhir::BMKG</headline>
+     <description>Peringatan Dini TSUNAMI yang disebabkan oleh gempa Mag:7.7, lokasi: 244 km BaratLaut PULAUKARATUNG-SULUT, waktu:08-Jun-26 06:37:42 WIB, dinyatakan telah berakhir, demikian informasi terakhir disampaikan oleh Sistem Peringatan Dini Tsunami Indonesia,kecuali ada informasi baru</description>
+     <instruction>Ikuti arahan peringatan dini TSUNAMI dari BPBD, BNPB dan BMKG</instruction>
+     <shakemap>20260608101548.mmi.jpg</shakemap>
+     <wzmap>20260608101548.wz.png</wzmap>
+     <ttmap>20260608101548.tt.png</ttmap>
+     <sshmap>20260608101548.ssh.png</sshmap>
+     <instruction1>Pemerintah Propinsi/Kab/Kota yang berada pada status "Awas" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi menyeluruh</instruction1>
+     <instruction2>Pemerintah Propinsi/Kab/Kota yang berada pada status "Siaga" diharap memperhatikan dan segera mengarahkan masyarakat untuk melakukan evakuasi</instruction2>
+     <instruction3>Pemerintah Propinsi/Kab/Kota yang berada pada status "Waspada" diharap memperhatikan dan segera mengarahkan masyarakat untuk menjauhi pantai dan tepian sungai</instruction3>
+     <timesent>08/06/2026 10:15:48WIB</timesent>
+  </info>
+</alert>

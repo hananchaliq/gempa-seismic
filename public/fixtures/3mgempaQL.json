@@ -1,0 +1,65 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "120.328590",
+     "-8.271708",
+     1
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "status": "M",
+    "depth": "10.000000",
+    "place": "Flores Region, Indonesia",
+    "mag": "4.569342",
+    "time": "2026-09-25 19:39:30.668563",
+    "id": "bmg2026svif",
+    "fase": "41"
+   }
+  },
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "105.288124",
+     "-6.897278",
+     1
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "status": "M",
+    "depth": "10.000000",
+    "place": "Sunda Strait, Indonesia",
+    "mag": "4.792761",
+    "time": "2026-09-25 13:47:32.33517",
+    "id": "bmg2026suwq",
+    "fase": "99"
+   }
+  },
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "125.652817",
+     "-7.444441",
+     1
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "status": "M",
+    "depth": "10.000000",
+    "place": "Banda Sea",
+    "mag": "4.817245",
+    "time": "2026-09-25 04:27:42.366763",
+    "id": "bmg2026sued",
+    "fase": "97"
+   }
+  }
+ ]
+}

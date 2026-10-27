@@ -1,0 +1,36 @@
+[
+ {
+  "id": "Station 39",
+  "type": "Feature",
+  "geometry": {
+   "type": "Point",
+   "coordinates": [
+    151.6396,
+    -30.4222,
+    1112.0
+   ]
+  },
+  "properties": {
+   "description": "Armidale, New South Wales",
+   "net": "AU",
+   "sta": "ARMA"
+  }
+ },
+ {
+  "id": "Station 41",
+  "type": "Feature",
+  "geometry": {
+   "type": "Point",
+   "coordinates": [
+    136.0555,
+    -32.8183,
+    321.0
+   ]
+  },
+  "properties": {
+   "description": "Buckleboo, South Australia",
+   "net": "AU",
+   "sta": "BBOO"
+  }
+ }
+]

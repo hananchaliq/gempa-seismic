@@ -1,0 +1,74 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "98.5",
+     "-0.71"
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "lokasi": "Sumatera Selatan",
+    "ot_utc": "21:09:21",
+    "pusat_gempa": "di laut 161 km tenggara Niasselatan ",
+    "tsunami": "Tidak",
+    "id_event": "rsk20220314040921",
+    "korban_kerusakan": "-",
+    "depth": "25",
+    "mag": "6.9",
+    "date": "13-03-2022",
+    "sumber": "BMKG",
+    "dirasakan": "IV Padang;IV Siberut;IV Nias Selatan;IV Gunungsitoli;III Padang Panjang;III Bukit Tinggi;III Pasaman Barat;III Tua Pejat;III Pariaman;II Dhamasraya;II Payakumbuh;II Kerinci;II Tapanuli Selatan;II Pesisir Selatan;II Batusangkar;II Padang Pariaman;II Solok;VI Hibala;V Pulau-pulau batu;V Pulau-pulau batu barat;V Tanah masa;V Siberut utara;V Siberut barat;"
+   }
+  },
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "99.98",
+     "0.15"
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "lokasi": "Sumatera Barat",
+    "ot_utc": "01:39:29",
+    "pusat_gempa": "di darat 17 km timurlaut Pasaman barat",
+    "tsunami": "Tidak",
+    "id_event": "rsk20220225083929",
+    "korban_kerusakan": "-",
+    "depth": "10",
+    "mag": "6.2",
+    "date": "25-02-2022",
+    "sumber": "BMKG",
+    "dirasakan": "V Pasaman;IV Agam;IV Bukit Tinggi;IV Padang Panjang ;III Padang ;III Payakumbuh;III Aek Godang;III Gunungsitoli;II Pesisir Selatan;II Rantau Parapat;II Nias Selatan ;II Bangkinang;II Malaysia;II Singapura;VI Pasaman Barat;"
+   }
+  },
+  {
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     "105.26",
+     "-7.01"
+    ]
+   },
+   "type": "Feature",
+   "properties": {
+    "lokasi": "Banten",
+    "ot_utc": "09:05:41",
+    "pusat_gempa": "di laut 52 km baratdaya Sumur",
+    "tsunami": "Tidak",
+    "id_event": "rsk20210114160541",
+    "korban_kerusakan": "-",
+    "depth": "10",
+    "mag": "6.7",
+    "date": "14-01-2022",
+    "sumber": "BMKG",
+    "dirasakan": "VI Cikeusik;VI Panimbang;IV Labuan;IV Sumur;III-IV Tangerang Selatan;III-IV Lembang;III-IV Kota Bogor;III-IV Pelabuhanratu;III-IV Kalianda;III-IV Bandar Lampung;III Anyer;II-III Jakarta;II-III Kota Tangerang;II-III Ciracas;II-III Bekasi;II-III Kota Bandung;II-III Kab. Bogor;II-III Kotabumi;"
+   }
+  }
+ ]
+}
