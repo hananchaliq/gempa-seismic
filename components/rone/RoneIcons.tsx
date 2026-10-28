@@ -1,11 +1,44 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import {
   fmtDateTime,
   fmtDepth,
   fmtMag,
   fmtRelative,
   magBucket,
+  magCategory,
 } from "@/lib/rone/format";
+
+function useAnimatedMagnitude(target: number, durationMs = 520): string {
+  const [val, setVal] = useState<number>(target);
+
+  useEffect(() => {
+    if (!Number.isFinite(target)) return;
+    let rafId = 0;
+    const startTime = performance.now();
+    const startVal = Math.max(0, target * 0.25);
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / durationMs);
+      // Cubic ease-out
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = startVal + (target - startVal) * eased;
+      setVal(current);
+      if (t < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        setVal(target);
+      }
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, durationMs]);
+
+  return fmtMag(val);
+}
 
 export const ICON_PATHS: Record<string, string> = {
   "arrow-right": "M5 12h14M13 6l6 6-6 6",
@@ -70,6 +103,10 @@ export function iconHTML(name: keyof typeof ICON_PATHS, cls = "icon"): string {
   return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="${ICON_PATHS[name] || ""}"/></svg>`;
 }
 
+/**
+ * Compact Circular Radial Arc Gauge (Matches Reference Image 1: "5,4" inside dark recessed ring)
+ * Applied simultaneously across all cards, tables, and lists in all menus.
+ */
 export function MagBadge({
   magnitude,
   size = "",
@@ -80,43 +117,111 @@ export function MagBadge({
   labelOverride?: string;
 }) {
   const bucket = magBucket(magnitude);
-  const text = labelOverride ?? `M ${fmtMag(magnitude)}`;
+  const category = magCategory(magnitude);
+  const isHigh = magnitude >= 5.0;
+  const animatedNum = useAnimatedMagnitude(magnitude, 480);
+  // 270-degree track is 75% of 100 pathLength; scale magnitude [1.5..8.8] across [10..74]
+  const arcFill = Number(
+    Math.max(10, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
+  );
+
   return (
     <span
-      className={`mag${size ? ` mag--${size}` : ""}`}
+      className={`mag-gauge${size ? ` mag-gauge--${size}` : ""}${
+        isHigh ? " mag-gauge--high" : ""
+      }`}
       data-m={bucket}
-      style={{ "--v": magnitude } as React.CSSProperties}
-      title={`Magnitudo M ${fmtMag(magnitude)}`}
+      data-high={isHigh ? "true" : "false"}
+      style={
+        {
+          "--v": magnitude,
+          "--arc-fill": arcFill,
+        } as React.CSSProperties
+      }
+      title={`Magnitudo M ${fmtMag(magnitude)} (${category})`}
+      aria-label={`Magnitudo M ${fmtMag(magnitude)} — ${category}`}
     >
-      <span className="mag__num">{text}</span>
+      <span className="mag-gauge__ring" aria-hidden="true">
+        <svg viewBox="0 0 100 100" className="mag-gauge__svg">
+          {/* Recessed dark 270° groove track */}
+          <circle
+            className="mag-gauge__track"
+            cx="50"
+            cy="50"
+            r="39"
+            pathLength={100}
+          />
+          {/* Animated sweeping colored arc */}
+          <circle
+            className="mag-gauge__arc"
+            cx="50"
+            cy="50"
+            r="39"
+            pathLength={100}
+            style={{ strokeDasharray: `${arcFill} 100` }}
+          />
+        </svg>
+        <span className="mag-gauge__well">
+          <span className="mag-gauge__num">{animatedNum}</span>
+        </span>
+      </span>
+      {labelOverride ? (
+        <span className="mag-gauge__override">{labelOverride}</span>
+      ) : null}
     </span>
   );
 }
 
-export function MagDial({ magnitude }: { magnitude: number }) {
+/**
+ * Large Circular Radial Arc Gauge (Matches Reference Image 2: "3,4" + Indonesian Seismic Strength Category)
+ * Used in Hero Terkini, Realtime Spotlight, and Detail Sheet.
+ */
+export function MagDial({
+  magnitude,
+  size = "default",
+}: {
+  magnitude: number;
+  size?: "default" | "xl" | "compact";
+}) {
   const bucket = magBucket(magnitude);
-  const fill = Math.min((magnitude / 9) * 75, 75).toFixed(1);
+  const strengthLabel = magCategory(magnitude);
+  const isHigh = magnitude >= 5.0;
+  const animatedNum = useAnimatedMagnitude(magnitude, 580);
+  const fill = Number(
+    Math.max(11, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
+  );
+
   return (
     <div
-      className="dial"
+      className={`dial dial--${size}${isHigh ? " dial--high" : ""}`}
       data-m={bucket}
+      data-high={isHigh ? "true" : "false"}
       role="img"
-      aria-label={`Magnitudo M ${fmtMag(magnitude)}`}
+      aria-label={`Magnitudo M ${fmtMag(magnitude)} — Kategori ${strengthLabel}`}
+      style={{ "--arc-fill": fill } as React.CSSProperties}
     >
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <circle className="dial__track" cx="50" cy="50" r="46" pathLength={100} />
+      <svg viewBox="0 0 100 100" className="dial__svg" aria-hidden="true">
+        {/* 270° Recessed Dark Groove Track starting at bottom-left (135deg) */}
+        <circle
+          className="dial__track"
+          cx="50"
+          cy="50"
+          r="40"
+          pathLength={100}
+        />
+        {/* 270° Animated Colored Sweep Arc */}
         <circle
           className="dial__arc"
           cx="50"
           cy="50"
-          r="46"
+          r="40"
           pathLength={100}
           style={{ strokeDasharray: `${fill} 100` }}
         />
       </svg>
-      <span className="dial__value">
-        <span className="dial__num">M {fmtMag(magnitude)}</span>
-        <span className="dial__label">Magnitudo</span>
+      <span className="dial__well">
+        <span className="dial__num">{animatedNum}</span>
+        <span className="dial__label">{strengthLabel}</span>
       </span>
     </div>
   );
@@ -124,31 +229,31 @@ export function MagDial({ magnitude }: { magnitude: number }) {
 
 export function MagLegend() {
   return (
-    <div className="legend" aria-label="Legenda magnitudo">
-      <span>Skala Magnitudo (M)</span>
+    <div className="legend" aria-label="Legenda kekuatan magnitudo">
+      <span>Skala Kekuatan Magnitudo</span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-0)" } as React.CSSProperties} />
-        M &lt;3
+        M &lt;3 · Mikro
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-3)" } as React.CSSProperties} />
-        M 3
+        M 3 · Ringan
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-4)" } as React.CSSProperties} />
-        M 4
+        M 4 · Sedang
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-5)" } as React.CSSProperties} />
-        M 5
+        M 5 · Kuat
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-6)" } as React.CSSProperties} />
-        M 6
+        M 6 · Besar
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-7)" } as React.CSSProperties} />
-        M 7+
+        M 7+ · Dahsyat
       </span>
     </div>
   );

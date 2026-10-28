@@ -1363,8 +1363,8 @@ body {
   gap: 10px;
   max-width: 100%;
   min-width: 170px;
-  height: 36px;
-  padding: 4px 6px 4px 14px;
+  height: 44px;
+  padding: 3px 3px 3px 14px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line-strong);
   cursor: pointer;
@@ -1468,176 +1468,441 @@ body {
 }
 
 /* ==========================================================================
-   MAGNITUDE DIAL & BADGES (Explicit "M" Prefix + "Magnitudo" Label)
+   UNIFIED CIRCULAR RADIAL ARC MAGNITUDE GAUGES (IMAGE 1 & IMAGE 2)
+   - .dial: Large Recessed Circular Gauge with Indonesian Seismic Category
+   - .mag-gauge: Compact Recessed Circular Gauge across all cards, tables & lists
+   - Animations: 270° radial arc sweep + number count-up + M5+ pulse halo
    ========================================================================== */
 
+@keyframes radialArcSweep {
+  0% {
+    stroke-dashoffset: 80;
+    opacity: 0.45;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes dialHighPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 10px 24px rgba(0, 0, 0, 0.35),
+      0 0 0 0 rgba(234, 88, 12, 0.32),
+      inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, 0.44),
+      0 0 0 7px rgba(234, 88, 12, 0),
+      inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  }
+}
+
+@keyframes miniGaugeHighPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 4px 10px rgba(0, 0, 0, 0.28),
+      0 0 0 0 rgba(234, 88, 12, 0.38);
+  }
+  50% {
+    box-shadow:
+      0 5px 14px rgba(0, 0, 0, 0.36),
+      0 0 0 5px rgba(234, 88, 12, 0);
+  }
+}
+
+/* 1. LARGE CIRCULAR RADIAL ARC GAUGE (.dial — Reference Image 2: "3,4" + Category) */
 .dial {
   position: relative;
-  width: 84px;
-  height: 84px;
+  width: 118px;
+  height: 118px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--bg-sunken);
-  border: 1px solid var(--line);
+  background: radial-gradient(circle at 35% 28%, #282623 0%, #1C1B18 70%, #151412 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.07);
+  box-shadow:
+    0 12px 26px rgba(0, 0, 0, 0.32),
+    inset 0 2px 3px rgba(255, 255, 255, 0.05);
   flex-shrink: 0;
+  user-select: none;
 }
 
-.dial svg {
-  width: 84px;
-  height: 84px;
-  transform: rotate(-90deg);
+.dial--xl {
+  width: 146px;
+  height: 146px;
+}
+
+.dial--compact {
+  width: 82px;
+  height: 82px;
+}
+
+.dial--high {
+  animation: dialHighPulse 2.5s ease-in-out infinite;
+}
+
+.dial__svg {
+  width: 100%;
+  height: 100%;
+  /* Start arc at bottom-left (~7:30 o'clock = 135deg) and sweep 270° clockwise */
+  transform: rotate(135deg);
+  position: relative;
+  z-index: 2;
 }
 
 .dial__track {
   fill: none;
-  stroke: var(--line-strong);
-  stroke-width: 6.5;
+  stroke: #121110;
+  stroke-width: 7.5;
+  stroke-linecap: round;
+  stroke-dasharray: 75 100;
 }
 
 .dial__arc {
   fill: none;
-  stroke: var(--obsidian);
-  stroke-width: 6.5;
+  stroke: #EAB308;
+  stroke-width: 7.5;
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  stroke-dashoffset: 0;
+  animation: radialArcSweep 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.25));
 }
 
-[data-theme="dark"] .dial__arc {
-  stroke: #F4F4F6;
+.dial[data-m="0"] .dial__arc,
+.dial[data-m="2"] .dial__arc {
+  stroke: #94A3B8;
+  filter: drop-shadow(0 0 4px rgba(148, 163, 184, 0.25));
 }
-
 .dial[data-m="3"] .dial__arc {
-  stroke: var(--m-3);
+  stroke: #E5B318;
+  filter: drop-shadow(0 0 5px rgba(229, 179, 24, 0.32));
 }
 .dial[data-m="4"] .dial__arc {
-  stroke: var(--m-4);
+  stroke: #F59E0B;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.35));
 }
 .dial[data-m="5"] .dial__arc {
-  stroke: var(--m-5);
+  stroke: #DF4B1A;
+  filter: drop-shadow(0 0 7px rgba(223, 75, 26, 0.42));
 }
 .dial[data-m="6"] .dial__arc {
-  stroke: var(--m-6);
+  stroke: #EF4444;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.46));
 }
 .dial[data-m="7"] .dial__arc {
-  stroke: var(--m-7);
+  stroke: #F43F5E;
+  filter: drop-shadow(0 0 9px rgba(244, 63, 94, 0.52));
 }
 
-.dial__value {
+/* Deeply Recessed Inner Center Well */
+.dial__well {
   position: absolute;
-  inset: 0;
+  inset: 19%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #211F1C 0%, #161513 75%, #11100E 100%);
+  box-shadow:
+    inset 0 5px 12px rgba(0, 0, 0, 0.78),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.04),
+    0 1px 1px rgba(255, 255, 255, 0.05);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1.05;
+  z-index: 3;
+  padding-top: 2px;
 }
 
 .dial__num {
   font-family: var(--font-mono);
-  font-size: 1.15rem;
+  font-size: 1.72rem;
   font-weight: 800;
+  line-height: 1;
   letter-spacing: -0.04em;
-  color: var(--ink);
+  color: #F3EFE6;
   font-variant-numeric: tabular-nums;
 }
 
+.dial--xl .dial__num {
+  font-size: 2.15rem;
+}
+
+.dial--compact .dial__num {
+  font-size: 1.18rem;
+}
+
 .dial__label {
-  margin-top: 3px;
-  font-size: 0.58rem;
+  margin-top: 4px;
+  font-size: 0.68rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.01em;
+  color: #A09A90;
+}
+
+.dial--xl .dial__label {
+  margin-top: 5px;
+  font-size: 0.78rem;
+}
+
+.dial--compact .dial__label {
+  margin-top: 2px;
+  font-size: 0.54rem;
+}
+
+/* 2. COMPACT CIRCULAR RADIAL ARC GAUGE (.mag-gauge — Reference Image 1: "5,4" inside dark ring) */
+.mag-gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.mag-gauge__ring {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 35% 30%, #272522 0%, #1B1A17 72%, #141311 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.28),
+    inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  flex-shrink: 0;
+}
+
+.mag-gauge:hover .mag-gauge__ring {
+  transform: scale(1.06);
+}
+
+.mag-gauge--sm .mag-gauge__ring {
+  width: 38px;
+  height: 38px;
+}
+
+.mag-gauge--lg .mag-gauge__ring {
+  width: 58px;
+  height: 58px;
+}
+
+.mag-gauge--high .mag-gauge__ring {
+  animation: miniGaugeHighPulse 2.4s ease-in-out infinite;
+}
+
+.mag-gauge__svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(135deg);
+  position: relative;
+  z-index: 2;
+}
+
+.mag-gauge__track {
+  fill: none;
+  stroke: #11100E;
+  stroke-width: 9.5;
+  stroke-linecap: butt;
+  stroke-dasharray: 75 100;
+}
+
+.mag-gauge__arc {
+  fill: none;
+  stroke: #E5B318;
+  stroke-width: 9.5;
+  stroke-linecap: butt;
+  stroke-dashoffset: 0;
+  animation: radialArcSweep 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mag-gauge[data-m="0"] .mag-gauge__arc,
+.mag-gauge[data-m="2"] .mag-gauge__arc {
+  stroke: #94A3B8;
+}
+.mag-gauge[data-m="3"] .mag-gauge__arc {
+  stroke: #E5B318;
+}
+.mag-gauge[data-m="4"] .mag-gauge__arc {
+  stroke: #F59E0B;
+}
+.mag-gauge[data-m="5"] .mag-gauge__arc {
+  stroke: #DF4B1A;
+}
+.mag-gauge[data-m="6"] .mag-gauge__arc {
+  stroke: #EF4444;
+}
+.mag-gauge[data-m="7"] .mag-gauge__arc {
+  stroke: #F43F5E;
+}
+
+.mag-gauge__well {
+  position: absolute;
+  inset: 21%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, #201E1B 0%, #151412 80%, #100F0D 100%);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.78);
+  display: grid;
+  place-items: center;
+  z-index: 3;
+}
+
+.mag-gauge__num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: #F5F2EB;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.mag-gauge--sm .mag-gauge__num {
+  font-size: 0.64rem;
+}
+
+.mag-gauge--lg .mag-gauge__num {
+  font-size: 0.94rem;
+}
+
+.mag-gauge__override {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Realtime Spotlight Header Card (Features Image 2 XL Circular Gauge + Telemetry) */
+.rt-spotlight {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  padding: 18px 20px;
+  margin-bottom: 6px;
+  border-radius: 24px;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line-strong);
+}
+
+@media (max-width: 900px) {
+  .rt-spotlight {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 16px;
+  }
+  .rt-spotlight__actions {
+    grid-column: 1 / -1;
+    flex-direction: row !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .rt-spotlight {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 16px;
+  }
+  .rt-spotlight__kicker-row {
+    justify-content: center;
+  }
+}
+
+.rt-spotlight__dial-wrap {
+  display: grid;
+  place-items: center;
+}
+
+.rt-spotlight__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rt-spotlight__kicker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rt-spotlight__title {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+.rt-spotlight__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 2px;
+}
+
+@media (max-width: 1100px) {
+  .rt-spotlight__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.rt-spotlight__metric {
+  padding: 8px 11px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.rt-spotlight__metric span {
+  font-size: 0.64rem;
+  font-weight: 700;
   color: var(--ink-2);
 }
 
-/* Solid Full-Color Magnitude Category Badges + Darker Same-Hue Text (All Devices & Themes) */
+.rt-spotlight__metric strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rt-spotlight__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Legacy fallback class if needed */
 .mag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 58px;
-  height: 28px;
-  padding: 0 10px;
-  border-radius: 9px;
+  min-width: 54px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 8px;
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-  background: #94A3B8;
-  color: #0F172A;
-  border: 1.5px solid #64748B;
-  white-space: nowrap;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.14);
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
-}
-
-/* M < 3: Slate Category */
-.mag[data-m="0"],
-.mag[data-m="2"],
-[data-theme="dark"] .mag[data-m="0"],
-[data-theme="dark"] .mag[data-m="2"] {
-  background: #94A3B8;
-  color: #0F172A;
-  border-color: #64748B;
-}
-
-/* M 3.0–3.9: Teal Category */
-.mag[data-m="3"],
-[data-theme="dark"] .mag[data-m="3"] {
-  background: #2DD4BF;
-  color: #042F2E;
-  border-color: #0D9488;
-  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.22);
-}
-
-/* M 4.0–4.9: Amber-Gold Category */
-.mag[data-m="4"],
-[data-theme="dark"] .mag[data-m="4"] {
-  background: #FBBF24;
-  color: #451A03;
-  border-color: #D97706;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.24);
-}
-
-/* M 5.0–5.9: Vibrant Orange Category (High Magnitude) */
-.mag[data-m="5"],
-[data-theme="dark"] .mag[data-m="5"] {
   background: #FB923C;
   color: #431407;
-  border-color: #EA580C;
-  box-shadow: 0 3px 10px rgba(249, 115, 22, 0.32);
-  animation: highMagPulse 2.8s ease-in-out infinite;
-}
-
-/* M 6.0–6.9: Coral Red Category (High Magnitude) */
-.mag[data-m="6"],
-[data-theme="dark"] .mag[data-m="6"] {
-  background: #F87171;
-  color: #450A0A;
-  border-color: #DC2626;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.36);
-  animation: highMagPulse 2.4s ease-in-out infinite;
-}
-
-/* M 7.0+: Rose-Crimson Category (Extreme Magnitude) */
-.mag[data-m="7"],
-[data-theme="dark"] .mag[data-m="7"] {
-  background: #FB7185;
-  color: #4C0519;
-  border-color: #E11D48;
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.42);
-  animation: highMagPulse 2s ease-in-out infinite;
-}
-
-@keyframes highMagPulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.03);
-  }
+  border: 1px solid #EA580C;
 }
 
 .high-mag-tag {
@@ -1666,21 +1931,6 @@ body {
   background: #FB7185;
   color: #4C0519;
   border-color: #E11D48;
-}
-
-.mag--sm {
-  min-width: 52px;
-  height: 25px;
-  font-size: 0.72rem;
-  padding: 0 8px;
-  border-radius: 8px;
-}
-
-.mag--lg {
-  min-width: 68px;
-  height: 40px;
-  font-size: 0.95rem;
-  border-radius: 12px;
 }
 
 /* ==========================================================================
@@ -1737,16 +1987,34 @@ body {
 .spline-widget__hero-val {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+}
+
+.spline-widget__hero-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.spline-widget__hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .spline-widget__big {
-  font-size: 2.2rem;
+  font-size: 1.75rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: -0.04em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.spline-widget__cat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-2);
 }
 
 .spline-widget__sub {
@@ -3731,7 +3999,8 @@ body {
 
 .timeline li {
   display: grid;
-  grid-template-columns: auto auto;
+  grid-template-columns: auto 1fr;
+  align-items: center;
   gap: 4px 10px;
   padding: 10px 12px;
   border-radius: 14px;
@@ -3750,6 +4019,7 @@ body {
   font-family: var(--font-mono);
   color: var(--ink-2);
   text-align: right;
+  font-size: 0.72rem;
 }
 
 .timeline__text {
@@ -3766,10 +4036,16 @@ body {
 
 .level-bar {
   display: grid;
-  grid-template-columns: 86px 1fr 40px;
+  grid-template-columns: 92px 1fr 36px;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: var(--fs-xs);
+}
+
+.level-bar .pill {
+  justify-content: center;
+  width: 100%;
+  padding: 4px 10px;
 }
 
 .level-bar__track {
@@ -3777,6 +4053,7 @@ body {
   border-radius: var(--r-pill);
   background: var(--bg-sunken);
   overflow: hidden;
+  border: 1px solid var(--line);
 }
 
 .level-bar__fill {
@@ -3784,6 +4061,7 @@ body {
   height: 100%;
   border-radius: var(--r-pill);
   background: var(--c, var(--obsidian));
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .disclosure {
@@ -3795,41 +4073,78 @@ body {
 }
 
 .disclosure summary {
-  padding: 10px 14px;
-  font-size: var(--fs-xs);
+  padding: 11px 16px;
+  font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  user-select: none;
+}
+
+.disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure summary svg {
+  transition: transform 0.2s ease;
+  color: var(--ink-2);
+}
+
+.disclosure[open] summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.disclosure[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.disclosure .tbl-wrap {
+  border: 0;
+  border-radius: 0;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .viewer {
-  background: var(--bg-sunken);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  padding: 10px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
 }
 
 .viewer__stage {
   position: relative;
-  width: 100%;
-  min-height: 220px;
-  max-height: 400px;
-  border-radius: 14px;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 18px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  background: #0F0F11;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
   padding: 0;
+  margin: 0;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  line-height: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .viewer__stage > img {
-  width: 100%;
-  max-height: 390px;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 460px;
+  border-radius: 17px;
   object-fit: contain;
   display: block;
 }
@@ -3847,6 +4162,7 @@ body {
   color: #FFFFFF;
   font-size: 0.7rem;
   font-weight: 700;
+  line-height: 1.2;
 }
 
 .viewer__meta {
@@ -3856,8 +4172,8 @@ body {
 }
 
 .viewer__tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -3893,8 +4209,9 @@ body {
 
 .viewer__fallback {
   position: relative;
-  width: 100%;
+  width: min(460px, 86vw);
   height: 240px;
+  border-radius: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4183,6 +4500,7 @@ body {
 .lightbox__stage img {
   max-width: 90vw;
   max-height: 78dvh;
+  border-radius: 16px;
   object-fit: contain;
   transition: transform 0.2s ease;
 }
@@ -4320,23 +4638,34 @@ body {
   color: #09090B;
 }
 
-.pill--signal,
-.pill--awas {
+.pill--signal {
   background: var(--danger-soft);
   color: var(--danger);
   border-color: rgba(220, 38, 38, 0.35);
 }
 
+.pill--awas {
+  background: #B91C2A;
+  color: #FFFFFF;
+  border-color: #991B1B;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
 .pill--siaga {
-  background: rgba(234, 88, 12, 0.14);
-  color: #EA580C;
-  border-color: rgba(234, 88, 12, 0.35);
+  background: #C84315;
+  color: #FFFFFF;
+  border-color: #9A3412;
+  font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .pill--waspada {
-  background: var(--warn-soft);
-  color: var(--warn);
-  border-color: rgba(217, 119, 6, 0.35);
+  background: #DFAC1B;
+  color: #1C1302;
+  border-color: #B48608;
+  font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .pager {

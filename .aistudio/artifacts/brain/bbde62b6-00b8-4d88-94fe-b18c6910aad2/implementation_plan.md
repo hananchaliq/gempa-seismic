@@ -1,107 +1,95 @@
-# Gempa Seismic — Monochrome Alabaster & Obsidian Redesign + Structured Telemetry Tables
+# Indikator Magnitudo Lingkaran Busur (Radial Arc Dial) Serentak & Beranimasi
 
-Transformasi menyeluruh antarmuka **Gempa Seismic** agar selaras dengan estetika arsitektural **Monochrome Alabaster & Obsidian** pada gambar referensi, dilengkapi navigasi sidebar kiri tunggal, tabel pendeteksi berstruktur penuh pada menu `Realtime`, `Dirasakan`, `M5+`, dan `Merusak`, serta standarisasi satuan **Magnitudo (`M`)** menggantikan label kualitatif seperti *Mikro* atau *Minor*.
-
----
+Pembaruan menyeluruh pada seluruh indikator magnitudo di aplikasi **Gempa Seismic** menjadi desain **lingkaran busur cekung (recessed radial arc gauge)** sesuai dua gambar referensi, diterapkan serentak di seluruh kartu utama, tabel, dan daftar di semua menu lengkap dengan animasi sapuan busur, hitung naik angka, serta kategori kekuatan seismik Indonesia.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> Berikut adalah keputusan produk dan desain yang telah dikonfirmasi dari jawaban Anda:
+> Seluruh keputusan desain di bawah ini telah dikonfirmasi melalui pilihan Anda dan siap dieksekusi begitu Anda menekan **Proceed**.
 
-- **Confirmed Decision 1 — Navigasi Sidebar Kiri Tunggal (Tanpa Double Navbar)**: Menggunakan satu *sidebar* vertikal di sisi kiri (seperti kolom menu `Accueil / Calendrier / Projets` pada gambar referensi) dengan kapsul aktif berwarna hitam pekat (*Obsidian Black* `#0F0F10`), sedangkan bagian atas ruang kerja menampilkan tajuk besar editorial dan kapsul utilitas (*status live*, *search bar* dengan tombol ikon bulat hitam, tombol *Sync*, *Suara*, dan *Tema*).
-- **Confirmed Decision 2 — Tabel Data Pendeteksi Terstruktur Penuh**: Menu `Realtime`, `Dirasakan`, `M5+`, dan `Merusak` dirombak menggunakan tabel data berstruktur penuh (*full-width structured table*) dengan kolom terpisah yang rapi (`#`, `Magnitudo`, `Waktu (WIB)`, `Wilayah`, `Koordinat`, `Kedalaman & Zona`, `Status / Dirasakan (MMI)`, dan tombol aksi `Inspeksi`), dipadukan dengan peta interaktif beresolusi tinggi.
-- **Confirmed Decision 3 — Standarisasi Satuan `Magnitudo` & Awalan `M`**: Mengganti teks kategori kualitatif (`Mikro`, `Minor`, `Ringan`, `Sedang`, `Kuat`) pada *dial* utama, *badge*, dan ringkasan menjadi label satuan **`Magnitudo`** dan awalan **`M`** (contoh: `M 2,6 · Magnitudo`).
+- **Keputusan Terkonfirmasi 1 (Label Kategori Kekuatan Magnitudo)**: Mengganti label *Minor* di bawah angka pada dial besar (Hero & Realtime) menjadi **Kategori Seismik Indonesia**:
+  - `M < 3,0` → **Mikro**
+  - `M 3,0–3,9` → **Ringan**
+  - `M 4,0–4,9` → **Sedang**
+  - `M 5,0–5,9` → **Kuat**
+  - `M 6,0–6,9` → **Besar**
+  - `M ≥ 7,0` → **Dahsyat**
+- **Keputusan Terkonfirmasi 2 (Cakupan Indikator Lingkaran Kecil)**: Indikator lingkaran busur (`image_e978c597.png`) diterapkan **serentak di seluruh kartu, tabel, dan daftar di semua menu** (Terkini, Realtime, Dirasakan, M5+, Tsunami, Merusak, Peta, dan Tentang) menggantikan kapsul kotak lama.
+- **Keputusan Terkonfirmasi 3 (Animasi Interaktif & Refresh)**:
+  - **Sapuan garis busur melingkar (`stroke-dashoffset` sweep)** dari pangkal kiri-bawah searah jarum jam sesuai proporsi magnitudo.
+  - **Hitung naik angka (`count-up`)** halus untuk nilai magnitudo pada dial utama & daftar saat halaman dimuat, berganti tab, atau disegarkan.
+  - **Denyut halus (`pulse ring`)** khusus pada indikator gempa signifikan **M 5,0+**.
 
 ---
 
 ## 1. Overview & Core Concept
 
-- **What It Does**: Platform pemantauan gempa bumi dan peringatan dini tsunami real-time Indonesia berbasis jaringan sensor BMKG InaTEWS (`gempa.rone.dev`) dengan pembaruan otomatis setiap 30 detik, kalkulator jarak episenter & waktu tiba gelombang P/S, penampang kedalaman hiposenter 2D, dan kurva tren magnitudo.
-- **Target Audience / Persona**: Masyarakat umum, peneliti kebumian, analis tanggap darurat, dan pengembang yang membutuhkan data seismik real-time dalam tampilan tabel yang presisi, bersih, dan mudah dipindai.
-- **Key Value**: Kombinasi estetika monokrom kontras tinggi (*Alabaster Stone & Obsidian Black*) yang tenang di mata dengan struktur tabel telemetri yang sangat rapi dan terorganisir.
+- **What It Does**: Mengubah seluruh penanda magnitudo gempa menjadi instrumen dial melingkar bertekstur *recessed dark bezel* (cincin luar gelap dengan bayangan kedalaman dalam, lintasan busur trek redup, dan busur warna aktif sesuai tingkat kekuatan magnitudo).
+- **Target Audience / Persona**: Masyarakat umum dan pemantau aktivitas kegempaan Indonesia di perangkat mobile, tablet, maupun desktop yang membutuhkan pembacaan tingkat bahaya gempa secara instan lewat panjang busur dan warna.
+- **Key Value**: Konsistensi visual 100% di seluruh halaman—baik dial berukuran besar pada sorotan Realtime/Hero maupun dial kompak pada setiap baris tabel dan kartu memiliki bahasa bentuk yang seragam dan hidup.
 
 ---
 
 ## 2. User Experience & Visual Design
 
 - **Key User Flows**:
-  1. **Beranda (`Terkini`)**: Pengguna disambut tajuk editorial besar (`Gempa Seismic`) dan kapsul utilitas atas, diikuti susunan Bento kontras tinggi: kartu monitor gempa terbaru & jadwal rentang waktu deteksi (gaya kapsul hitam horizontal), kartu kurva energi gelombang halus (*smooth bezier curve*), kartu fokus gelap (*Obsidian Card*) untuk peta & pantauan prioritas, serta kartu 3 kolom ringkasan parameter tektonik di bagian bawah.
-  2. **Eksplorasi Tabel Terstruktur (`Realtime`, `Dirasakan`, `M5+`, `Merusak`)**: Pengguna menyaring data melalui *toolbar* kapsul (filter magnitudo `Semua`, `M3+`, `M4+`, `M5+` dan pencarian wilayah), lalu membaca tabel terstruktur penuh dengan angka *tabular-nums* yang sejajar vertikal dan mengklik baris mana pun untuk membuka panel *Detail Sheet* atau memusatkan peta.
-  3. **Peringatan Tsunami & Peta Seismisitas (`Tsunami`, `Peta`, `Tentang`, `API`)**: Menampilkan matriks zona peringatan, kronologi buletin, peta sesar aktif Indonesia, dan penguji endpoint JSON.
+  1. **Sorotan Utama (Hero Terkini & Panel Deteksi Realtime — Referensi Gambar 2)**: Menampilkan dial lingkaran besar berlapis bezel cekung dengan angka magnitudo tebal di tengah (mis. `3,4` atau `5,4`), label kategori kekuatan seismik tepat di bawah angka (`Mikro`, `Ringan`, `Sedang`, `Kuat`, `Besar`, `Dahsyat`), dan busur warna dengan ujung membulat (`stroke-linecap: round` / tegas) yang menyapu dari kiri-bawah.
+  2. **Tabel, Kartu & Daftar di Semua Menu (Referensi Gambar 1)**: Setiap baris tabel (`Realtime`, `Dirasakan`, `M5+`, `Merusak`, `Tsunami`), kartu tumpuk (`Stacked Deck`), dan bilah atas menampilkan dial lingkaran kompak (`5,4`) dengan bezel gelap cekung, trek busur redup, dan busur aktif berwarna sesuai skala magnitudo.
+  3. **Transisi Refresh & Pindah Menu**: Saat pengguna menekan tombol Refresh, pindah tab menu, atau data baru masuk otomatis, seluruh dial menjalankan animasi sapuan busur dan hitung naik angka secara serempak.
 
 - **Visual Identity & Theme**:
-  - *Aesthetic Direction*: **Sculptural Monochrome Alabaster & Obsidian** — memadukan permukaan batu alabaster terang (`#ECECE9` / `#F7F7F5`) dengan modul kartu hitam pekat (`#0F0F10`) bertepi membulat halus (`24px–28px`), tombol ikon bulat hitam, dan garis pembatas tipis (*hairline borders*).
+  - *Aesthetic Direction*: Instrumen seismograf taktil modern (*Tactile Seismic Gauge*) dengan kontras tinggi di atas permukaan terang maupun gelap.
   - *Color Palette & Mood*:
-    - **Light Mode (Default — Sesuai Gambar Referensi)**:
-      - `--bg`: `#E5E5E0` (Outer Alabaster Stone)
-      - `--bg-shell`: `#F2F2EF` (Main Glassmorphic Frame)
-      - `--bg-card`: `#FAFAFA` (Crisp Ivory Surface)
-      - `--bg-obsidian`: `#0F0F10` (High-Contrast Obsidian Black Card & Active Pill)
-      - `--ink`: `#111113` (Deep Obsidian Ink)
-      - `--ink-2`: `#636369` (Muted Pewter)
-      - `--ink-3`: `#94949C` (Soft Silver Gray)
-    - **Dark Mode (Night Monitoring Posture)**:
-      - `--bg`: `#09090B`, `--bg-shell`: `#111114`, `--bg-card`: `#18181C`, `--bg-obsidian`: `#050506`, `--ink`: `#F4F4F6`.
-    - **Semantic Magnitude Accents**: Tetap mempertahankan indikator warna skala magnitudo terkalibrasi pada titik peta dan lencana `M` agar tingkat bahaya gempa langsung dikenali secara visual.
-  - *Typography & Hierarchy*:
-    - Display & UI: `Plus Jakarta Sans` (700/800 untuk tajuk besar bergaya `Web Design` pada referensi, 500/600 untuk navigasi dan tabel).
-    - Numerik & Telemetri: `JetBrains Mono` dengan `font-variant-numeric: tabular-nums` pada seluruh angka magnitudo, koordinat, waktu WIB, dan kedalaman.
-
-- **Interactive Feedback & Motion**:
-  - Animasi transisi halus pada setiap siklus pembaruan 30 detik (`refreshCycle`), efek *hover* baris tabel dengan sorotan kontras, dan umpan balik instan saat memilih titik gempa pada kurva maupun peta.
+    - Casing / Bezel Lingkaran: `#1E1D1B` (cincin luar) dan `#141312` (cekungan dalam dengan *inner shadow* halus) agar kontras busur menyala tajam baik di mode terang maupun mode gelap.
+    - Skala Warna Busur Magnitudo:
+      - `M < 3` (**Mikro**): `#94A3B8` (Slate)
+      - `M 3,0–3,9` (**Ringan**): `#14B8A6` / `#EAB308` (Amber-Gold / Teal sesuai skala kekuatan)
+      - `M 4,0–4,9` (**Sedang**): `#F59E0B` (Amber)
+      - `M 5,0–5,9` (**Kuat**): `#EA580C` (Oranye Terang seperti gambar `5,4`)
+      - `M 6,0–6,9` (**Besar**): `#EF4444` (Merah)
+      - `M 7,0+` (**Dahsyat**): `#F43F5E` (Merah Tua Menyala)
+  - *Typography & Hierarchy*: Angka magnitudo menggunakan font numerik tabular (`tabular-nums`) berwarna putih gading (`#F5F2EB`) tepat di titik pusat lingkaran, diikuti sub-label kategori (`Mikro`, `Ringan`, `Sedang`, `Kuat`, `Besar`, `Dahsyat`) dengan warna abu hangat (`#A6A096`) pada dial besar.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Decision 1 — Arsitektur Shell: Satu Sidebar Kiri + Header Utilitas Kontekstual**
-  - *Chosen Approach*: Memindahkan 8 menu navigasi ke dalam `.app-sidebar` di sisi kiri (dengan kapsul hitam aktif dan kartu profil stasiun/lokasi referensi di bagian bawah sidebar), serta menjadikan bagian atas halaman sebagai `.workspace-topbar` yang hanya berisi judul halaman dan kapsul pencarian/sinkronisasi.
-  - *Why*: Meniru komposisi persis dari gambar referensi sekaligus memastikan tidak ada duplikasi navbar.
-- **Decision 2 — Tabel Pendeteksi Terstruktur Penuh (Full-Width Structured Data Grid)**
-  - *Chosen Approach*: Menyusun ulang tampilan data pada `Realtime`, `Dirasakan`, `M5+`, dan `Merusak` menjadi tabel penuh dengan 7 kolom terdefinisi (`No`, `Magnitudo`, `Waktu Kejadian (WIB)`, `Wilayah Episenter`, `Koordinat`, `Kedalaman`, `Status / Intensitas MMI`, dan `Aksi`).
-  - *Why*: Memenuhi permintaan pengguna agar data pendeteksi terlihat rapi, sejajar, dan terstruktur layaknya instrumen analitik profesional.
-- **Decision 3 — Satuan `Magnitudo` & Awalan `M` Eksplisit**
-  - *Chosen Approach*: Mengubah fungsi `MagDial` dan komponen lencana agar menampilkan `Magnitudo` sebagai sub-label satuan dan `M` di depan angka magnitudo (mis. `M 4,8`), tanpa label `Mikro` atau `Minor`.
-  - *Why*: Lebih akurat secara ilmiah dan sesuai instruksi langsung pengguna.
+- **Keputusan 1: Geometri Busur Radial 270° Dimulai dari Kiri-Bawah (135°)**
+  - *Chosen Approach*: Menggunakan SVG `<circle>` dengan rotasi `135deg` dan `pathLength="100"` (panjang trek maksimum `75` dari `100`), sehingga titik awal busur berada di kiri-bawah (~jam 7:30) dan menyapu searah jarum jam melewati sisi kiri dan atas menuju kanan-bawah (~jam 4:30), persis seperti kedua gambar referensi.
+  - *Why*: Memberikan ruang visual yang seimbang di bagian bawah untuk sub-label kategori kekuatan (`Ringan`, `Sedang`, `Kuat`, dll.) pada dial besar serta menjaga tampilan dial kecil tetap identik dengan referensi `5,4`.
+- **Keputusan 2: Animasi Ringan Berbasis CSS & `requestAnimationFrame`**
+  - *Chosen Approach*: Menggabungkan animasi CSS `@keyframes` pada `stroke-dashoffset` untuk sapuan busur dan hook `requestAnimationFrame` berdurasi `550ms` (cubic-out) untuk hitung naik angka magnitudo, ditambah efek *pulse* halus khusus untuk `M ≥ 5,0`.
+  - *Why*: Menjaga performa 60fps tetap ringan meskipun puluhan baris tabel dirender secara bersamaan di layar.
 
 ---
 
-## 4. Technical Architecture & Data Strategy *(Technical Reference)*
-
-### Architecture & Component Diagram
+## 4. Technical Architecture & Data Strategy
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                     .monochrome-shell (Alabaster Frame)                      │
-├────────────────────┬─────────────────────────────────────────────────────────┤
-│   .app-sidebar     │                  .workspace-main                        │
-│  (Single Left Nav) │  ┌───────────────────────────────────────────────────┐  │
-│                    │  │ .workspace-topbar                                 │  │
-│  • Brand Header    │  │  • Large Editorial Title ("Gempa / Seismic")      │  │
-│  • 8 Menu Items    │  │  • Utility Pill (Date/WIB + Peak M + Live 30s)    │  │
-│    (Active =       │  │  • Search Pill (Circular Black Icon + Input)      │  │
-│     #0F0F10 Pill)  │  │  • Circular Action Buttons (Sync, Suara, Theme)   │  │
-│  • API Docs Link   │  └───────────────────────────────────────────────────┘  │
-│                    │  ┌───────────────────────────────────────────────────┐  │
-│  ┌──────────────┐  │  │ Active View Router:                               │  │
-│  │ Station /    │  │  │  1. Terkini: Reference Bento Grid                 │  │
-│  │ Reference    │  │  │     • Capsule Timeline Card + Smooth Curve Card   │  │
-│  │ Location Pod │  │  │     • Obsidian Dark Map & Priority Spotlight Card │  │
-│  └──────────────┘  │  │     • Bottom Obsidian 3-Column Telemetry Card     │  │
-│                    │  │  2. Realtime / Dirasakan / M5+ / Merusak:         │  │
-│                    │  │     • Interactive Map Card + Filter Toolbar       │  │
-│                    │  │     • Full-Width 7-Column Structured Data Table   │  │
-│                    │  │  3. Tsunami / Peta / Tentang / Dokumentasi API    │  │
-│                    │  └───────────────────────────────────────────────────┘  │
-└────────────────────┴─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     Sistem Klasifikasi & Format Seismik                  │
+│  • magStrengthLabel(m): "Mikro" | "Ringan" | "Sedang" | "Kuat" |         │
+│                         "Besar" | "Dahsyat"                              │
+│  • magBucket(m) & magColorHex(m): Penentu warna busur & status M5+       │
+└───────────────────────────────────┬──────────────────────────────────────┘
+                                    │
+        ┌───────────────────────────┴───────────────────────────┐
+        ▼                                                       ▼
+┌───────────────────────────────────────┐   ┌───────────────────────────────────────┐
+│   Dial Lingkaran Besar (MagDial)      │   │  Dial Lingkaran Kompak (MagBadge)     │
+│   [Referensi Gambar 2: "3,4 Ringan"]  │   │  [Referensi Gambar 1: "5,4"]          │
+├───────────────────────────────────────┤   ├───────────────────────────────────────┤
+│ • Digunakan pada:                     │   │ • Digunakan serentak pada:            │
+│   - Kartu Sorotan Utama (Hero)        │   │   - Tabel Realtime, Dirasakan, M5+,   │
+│   - Panel Deteksi Realtime            │   │     Merusak, Tsunami                  │
+│   - Lembar Detail Gempa (Modal)       │   │   - Kartu Tumpuk (Stacked Deck)       │
+│ • Bezel cekung berlapis + SVG Arc     │   │   - Bilah Atas, Daftar & Legenda      │
+│ • Angka Count-Up + Sub-label Kategori │   │ • Ukuran: sm (38px), md (46px),       │
+│   ("Mikro", "Ringan", "Sedang",       │   │   lg (56px)                           │
+│    "Kuat", "Besar", "Dahsyat")        │   │ • Animasi sapuan busur + denyut M5+   │
+└───────────────────────────────────────┘   └───────────────────────────────────────┘
 ```
 
 ### Interactive Component & State Mapping
-
-- **Standarisasi `MagDial`, `MagRing`, dan `MagBadge`**:
-  - Menghapus pemanggilan `magLabel(m)` (`Mikro`/`Minor`) pada `MagDial` dan menggantinya dengan teks eksplisit `Magnitudo` serta format `M {fmtMag(m)}`.
-- **Komponen Tabel Terstruktur (`StructuredSeismicTable`)**:
-  - Mendukung pengurutan kolom (*sorting* berdasarkan Magnitudo, Waktu, Wilayah, Kedalaman), pencarian wilayah instan, lencana `M {magnitudo}` dengan angka *tabular-nums*, indikator kedalaman (`Dangkal`, `Menengah`, `Dalam`), serta klik baris untuk membuka `RoneDetailSheet`.
-- **Sinkronisasi Real-Time 30 Detik**:
-  - Mempertahankan *polling* otomatis 30 detik ke `/api/v1/earthquakes/realtime`, `/latest`, `/felt`, `/significant`, dan `/tsunami` dengan animasi transisi halus pada setiap pembaruan.
+- **Sinkronisasi Refresh (`data-refresh-cycle`)**: Setiap kali tombol Refresh ditekan atau pengguna berpindah tab menu, komponen `MagDial` dan `MagBadge` memicu ulang animasi sapuan busur (`dial-arc-sweep`) dan penghitung angka (`useAnimatedNumber`) secara serempak.
+- **Responsivitas Seluruh Perangkat**: Ukuran dial kompak menyesuaikan secara otomatis di layar HP (`38px–42px`), tablet (`44px`), dan laptop/desktop (`46px–52px` untuk tabel/kartu, serta `148px–172px` untuk dial besar di Realtime dan Beranda).

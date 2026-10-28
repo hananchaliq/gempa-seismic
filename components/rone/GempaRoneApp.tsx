@@ -13,9 +13,11 @@ import {
   fmtNumber,
   fmtRelative,
   fmtTime,
+  fmtTimeOnly,
   fmtUtcDate,
   distanceKm,
   magBucket,
+  magCategory,
   magScaleRange,
   magTierInfo,
   parseFelt,
@@ -1391,7 +1393,8 @@ export function GempaRoneApp({
                               <span className="file-pill-item__body">
                                 <strong>{ev.region}</strong>
                                 <span>
-                                  {fmtDepth(ev.depth_km)} · {fmtRelative(ev.origin_time, nowMs)}
+                                  {fmtDateTime(ev.origin_time)} · {fmtDepth(ev.depth_km)} ·{" "}
+                                  {fmtRelative(ev.origin_time, nowMs)}
                                 </span>
                               </span>
                               {tier.isHigh ? (
@@ -1746,37 +1749,130 @@ export function GempaRoneApp({
             {/* ==================== 2. REALTIME — FULL-WIDTH STRUCTURED DETECTION TABLE ==================== */}
             {activeTab === "realtime" && (
               <div className="page-stack">
-                <section className="card map-banner-card" aria-label="Peta deteksi realtime">
-                  <div className="map-banner-card__head">
-                    <h2>Peta Sebaran Sensor Realtime</h2>
-                    <div className="row">
-                      <span className="pill">{fmtNumber(realtime.length)} deteksi aktif</span>
-                      {realtime[0] ? (
-                        <MagBadge magnitude={realtime[0].magnitude} size="sm" />
+                {(() => {
+                  const rtSpot = rtSelected || filteredRealtime[0] || realtime[0] || null;
+                  const rtDepthInfo = rtSpot ? depthCategoryLabel(rtSpot.depth_km) : null;
+                  return (
+                    <section
+                      className="card map-banner-card rt-hero-card"
+                      aria-label="Sorotan dan peta deteksi realtime"
+                    >
+                      {rtSpot ? (
+                        <motion.div
+                          key={`rt-spot-${refreshCycle}-${rtSpot.event_id}`}
+                          className="rt-spotlight"
+                          initial={{ opacity: 0.86, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+                        >
+                          <div className="rt-spotlight__dial-wrap">
+                            <MagDial magnitude={rtSpot.magnitude} size="xl" />
+                          </div>
+
+                          <div className="rt-spotlight__body">
+                            <div className="rt-spotlight__kicker-row">
+                              <span className="hero__kicker">
+                                {rtSelected
+                                  ? "Deteksi Realtime Terpilih"
+                                  : "Deteksi Sensor Realtime Terbaru"}
+                              </span>
+                              <span className="pill">
+                                {fmtRelative(rtSpot.origin_time, nowMs)}
+                              </span>
+                              <span
+                                className={`pill ${
+                                  rtSpot.status === "confirmed" ? "pill--obsidian" : ""
+                                }`}
+                              >
+                                {rtSpot.status === "confirmed"
+                                  ? "Terkonfirmasi"
+                                  : "Sensor Otomatis"}
+                              </span>
+                            </div>
+
+                            <h2 className="rt-spotlight__title">{rtSpot.region}</h2>
+
+                            <div className="rt-spotlight__metrics">
+                              <div className="rt-spotlight__metric">
+                                <span>Kategori Kekuatan</span>
+                                <strong>
+                                  {magCategory(rtSpot.magnitude)} ({magScaleRange(rtSpot.magnitude)})
+                                </strong>
+                              </div>
+                              <div className="rt-spotlight__metric">
+                                <span>Waktu Kejadian</span>
+                                <strong className="mono">{fmtDateTime(rtSpot.origin_time)}</strong>
+                              </div>
+                              <div className="rt-spotlight__metric">
+                                <span>Kedalaman Hiposenter</span>
+                                <strong className="mono">
+                                  {fmtDepth(rtSpot.depth_km)} · {rtDepthInfo?.tier}
+                                </strong>
+                              </div>
+                              <div className="rt-spotlight__metric">
+                                <span>Koordinat Episenter</span>
+                                <strong className="mono">
+                                  {fmtCoords(rtSpot.latitude, rtSpot.longitude)}
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rt-spotlight__actions">
+                            <button
+                              type="button"
+                              className="btn btn--obsidian"
+                              onClick={() =>
+                                setDetailTarget({ kind: "realtime", data: rtSpot })
+                              }
+                            >
+                              Detail &amp; Riwayat Revisi →
+                            </button>
+                            {rtSelected ? (
+                              <button
+                                type="button"
+                                className="btn btn--sm"
+                                onClick={() => setRtSelected(null)}
+                              >
+                                Reset ke Terbaru
+                              </button>
+                            ) : null}
+                          </div>
+                        </motion.div>
                       ) : null}
-                    </div>
-                  </div>
-                  <RoneLeafletMap
-                    id="realtime-map"
-                    className="map map--banner"
-                    ariaLabel="Peta deteksi realtime"
-                    events={filteredRealtime}
-                    latestEvent={filteredRealtime[0] || null}
-                    selectedEvent={rtSelected}
-                    centerOnLatest
-                    latestZoom={5}
-                    scrollWheelZoom={false}
-                    isDark={isDark}
-                    onSelectEvent={(ev) => {
-                      const found = realtime.find((r) => r.event_id === ev.event_id);
-                      if (found) {
-                        setRtSelected(found);
-                        setDetailTarget({ kind: "realtime", data: found });
-                      }
-                    }}
-                  />
-                  <MagLegend />
-                </section>
+
+                      <div className="map-banner-card__head">
+                        <h2>Peta Sebaran Sensor Realtime</h2>
+                        <div className="row">
+                          <span className="pill">{fmtNumber(realtime.length)} deteksi aktif</span>
+                          {realtime[0] ? (
+                            <MagBadge magnitude={realtime[0].magnitude} size="sm" />
+                          ) : null}
+                        </div>
+                      </div>
+                      <RoneLeafletMap
+                        id="realtime-map"
+                        className="map map--banner"
+                        ariaLabel="Peta deteksi realtime"
+                        events={filteredRealtime}
+                        latestEvent={filteredRealtime[0] || null}
+                        selectedEvent={rtSelected}
+                        centerOnLatest
+                        latestZoom={5}
+                        scrollWheelZoom={false}
+                        isDark={isDark}
+                        onSelectEvent={(ev) => {
+                          const found = realtime.find((r) => r.event_id === ev.event_id);
+                          if (found) {
+                            setRtSelected(found);
+                            setDetailTarget({ kind: "realtime", data: found });
+                          }
+                        }}
+                      />
+                      <MagLegend />
+                    </section>
+                  );
+                })()}
 
                 <section className="card structured-table-card" aria-label="Tabel terstruktur deteksi gempa realtime">
                   <div className="toolbar" role="group" aria-label="Saring data realtime">
@@ -2450,11 +2546,14 @@ export function GempaRoneApp({
                 <div id="events" aria-live="polite" className="page-stack">
                   {tsunamiList.map((ev, index) => {
                     const zoneBulletin: RoneTsunamiBulletin | undefined =
-                      ev.bulletins.find((b) => b.zones?.length) || ev.bulletins[0];
+                      ev.bulletins.find(
+                        (b) => (b.warning_zones?.length || b.zones?.length || 0) > 0
+                      ) || ev.bulletins[0];
                     const obsBulletin: RoneTsunamiBulletin | undefined = ev.bulletins.find(
                       (b) => b.observations?.length
                     );
-                    const zones: RoneTsunamiZone[] = zoneBulletin?.zones || [];
+                    const zones: RoneTsunamiZone[] =
+                      zoneBulletin?.warning_zones || zoneBulletin?.zones || [];
                     const mediaSource =
                       ev.bulletins.find((b) => b.media?.warning_zones)?.media ||
                       ev.bulletins[0]?.media ||
@@ -2468,7 +2567,7 @@ export function GempaRoneApp({
                     zones.forEach((z) => {
                       if (counts[z.level] != null) counts[z.level] += 1;
                     });
-                    const maxZoneCount = Math.max(1, ...Object.values(counts));
+                    const totalZoneCount = Math.max(1, zones.length);
 
                     return (
                       <article
@@ -2524,7 +2623,7 @@ export function GempaRoneApp({
                                 <li key={b.event_id + b.code}>
                                   <span className="timeline__code">{b.code}</span>
                                   <span className="timeline__time">
-                                    {fmtTime(b.issued_at)}
+                                    {fmtDateTime(b.issued_at)}
                                   </span>
                                   <p className="timeline__text">
                                     <strong>{bulletinLabel(b.code)}</strong>
@@ -2541,45 +2640,48 @@ export function GempaRoneApp({
                               <>
                                 <h3>Zona peringatan · {fmtNumber(zones.length)} wilayah</h3>
                                 <div className="level-bars">
-                                  {(["AWAS", "SIAGA", "WASPADA"] as const)
-                                    .filter((lv) => counts[lv] > 0)
-                                    .map((lv) => (
-                                      <div key={lv} className="level-bar">
+                                  {(["AWAS", "SIAGA", "WASPADA"] as const).map((lv) => (
+                                    <div key={lv} className="level-bar">
+                                      <span
+                                        className={`pill pill--${lv.toLowerCase()}`}
+                                      >
+                                        {lv}
+                                      </span>
+                                      <span className="level-bar__track">
                                         <span
-                                          className={`pill pill--${lv.toLowerCase()}`}
-                                        >
-                                          {lv}
-                                        </span>
-                                        <span className="level-bar__track">
-                                          <span
-                                            className="level-bar__fill"
-                                            style={
-                                              {
-                                                width: `${
-                                                  (counts[lv] / maxZoneCount) * 100
-                                                }%`,
-                                                "--c": `var(--lv-${lv.toLowerCase()})`,
-                                              } as React.CSSProperties
-                                            }
-                                          />
-                                        </span>
-                                        <span className="num mono">
-                                          {fmtNumber(counts[lv])}
-                                        </span>
-                                      </div>
-                                    ))}
+                                          className="level-bar__fill"
+                                          style={
+                                            {
+                                              width: `${
+                                                (counts[lv] / totalZoneCount) * 100
+                                              }%`,
+                                              "--c": `var(--lv-${lv.toLowerCase()})`,
+                                            } as React.CSSProperties
+                                          }
+                                        />
+                                      </span>
+                                      <span className="num mono">
+                                        {fmtNumber(counts[lv])}
+                                      </span>
+                                    </div>
+                                  ))}
                                 </div>
 
-                                <details className="disclosure">
-                                  <summary>Daftar wilayah terdampak ({zones.length})</summary>
+                                <details className="disclosure" open>
+                                  <summary>
+                                    <span>Daftar wilayah</span>
+                                    <RoneIcon name="chevronDown" />
+                                  </summary>
                                   <div className="table-wrap">
                                     <table className="table table--structured">
                                       <thead>
                                         <tr>
                                           <th scope="col">Status</th>
+                                          <th scope="col">Wilayah</th>
                                           <th scope="col">Provinsi</th>
-                                          <th scope="col">Kabupaten / Kota</th>
-                                          <th scope="col">Perkiraan Tiba</th>
+                                          <th scope="col" className="num">
+                                            Perkiraan tiba
+                                          </th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -2592,9 +2694,11 @@ export function GempaRoneApp({
                                                 {z.level}
                                               </span>
                                             </td>
+                                            <td>
+                                              <strong>{z.district}</strong>
+                                            </td>
                                             <td>{z.province}</td>
-                                            <td>{z.district}</td>
-                                            <td className="mono nowrap">
+                                            <td className="num mono nowrap">
                                               {z.estimated_arrival
                                                 ? fmtDateTime(z.estimated_arrival)
                                                 : "–"}
@@ -2615,32 +2719,45 @@ export function GempaRoneApp({
                             {obsBulletin ? (
                               <details className="disclosure" open={index === 0}>
                                 <summary>
-                                  Pengamatan tsunami ·{" "}
-                                  {fmtNumber(obsBulletin.observations.length)} lokasi
+                                  <span>
+                                    Pengamatan tsunami ·{" "}
+                                    {fmtNumber(obsBulletin.observations.length)} lokasi
+                                  </span>
+                                  <RoneIcon name="chevronDown" />
                                 </summary>
                                 <div className="table-wrap">
                                   <table className="table table--structured">
                                     <thead>
                                       <tr>
-                                        <th scope="col">Stasiun</th>
                                         <th scope="col">Lokasi</th>
-                                        <th scope="col">Waktu</th>
                                         <th scope="col" className="num">
-                                          Tinggi Gelombang
+                                          Tinggi
+                                        </th>
+                                        <th scope="col" className="num">
+                                          Waktu (WIB)
                                         </th>
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {obsBulletin.observations.map((o, oIdx) => (
-                                        <tr key={`${o.station}-${oIdx}`}>
-                                          <td className="mono">{o.station}</td>
-                                          <td>{o.location}</td>
-                                          <td className="mono nowrap">{o.time}</td>
-                                          <td className="num mono">
-                                            <strong>{fmtDecimal(o.height_m)} m</strong>
-                                          </td>
-                                        </tr>
-                                      ))}
+                                      {[...obsBulletin.observations]
+                                        .sort((a, b) => (b.height_m ?? 0) - (a.height_m ?? 0))
+                                        .map((o, oIdx) => (
+                                          <tr key={`${o.location}-${oIdx}`}>
+                                            <td>
+                                              <strong>{o.location}</strong>
+                                            </td>
+                                            <td className="num mono nowrap">
+                                              <strong>{fmtDecimal(o.height_m)} m</strong>
+                                            </td>
+                                            <td className="num mono nowrap">
+                                              {o.observed_at
+                                                ? fmtDateTime(o.observed_at)
+                                                : o.time
+                                                  ? fmtTimeOnly(o.time)
+                                                  : "–"}
+                                            </td>
+                                          </tr>
+                                        ))}
                                     </tbody>
                                   </table>
                                 </div>
@@ -3311,52 +3428,52 @@ export function GempaRoneApp({
                   <table className="table table--structured scale-table">
                     <thead>
                       <tr>
-                        <th scope="col">Lencana</th>
-                        <th scope="col">Rentang Magnitudo</th>
+                        <th scope="col">Indikator</th>
+                        <th scope="col">Kategori &amp; Rentang</th>
                         <th scope="col">Karakteristik Energi &amp; Dampak</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
                         <td>
-                          <MagBadge magnitude={2.5} size="sm" labelOverride="M <3" />
+                          <MagBadge magnitude={2.5} size="sm" labelOverride="Mikro" />
                         </td>
-                        <td className="mono">Magnitudo M &lt; 3,0</td>
+                        <td className="mono">Mikro · M &lt; 3,0</td>
                         <td>Terekam instrumen seismograf lokal; umumnya tidak terasa manusia.</td>
                       </tr>
                       <tr>
                         <td>
-                          <MagBadge magnitude={3.5} size="sm" labelOverride="M 3" />
+                          <MagBadge magnitude={3.4} size="sm" labelOverride="Ringan" />
                         </td>
-                        <td className="mono">Magnitudo M 3,0–3,9</td>
+                        <td className="mono">Ringan · M 3,0–3,9</td>
                         <td>Terasa ringan di dekat episenter apabila kedalaman sangat dangkal.</td>
                       </tr>
                       <tr>
                         <td>
-                          <MagBadge magnitude={4.5} size="sm" labelOverride="M 4" />
+                          <MagBadge magnitude={4.5} size="sm" labelOverride="Sedang" />
                         </td>
-                        <td className="mono">Magnitudo M 4,0–4,9</td>
+                        <td className="mono">Sedang · M 4,0–4,9</td>
                         <td>Getaran dirasakan cukup luas di dalam ruangan; jarang memicu kerusakan.</td>
                       </tr>
                       <tr>
                         <td>
-                          <MagBadge magnitude={5.5} size="sm" labelOverride="M 5" />
+                          <MagBadge magnitude={5.4} size="sm" labelOverride="Kuat" />
                         </td>
-                        <td className="mono">Magnitudo M 5,0–5,9</td>
+                        <td className="mono">Kuat · M 5,0–5,9</td>
                         <td>Dapat menyebabkan kerusakan ringan–sedang pada konstruksi lemah.</td>
                       </tr>
                       <tr>
                         <td>
-                          <MagBadge magnitude={6.5} size="sm" labelOverride="M 6" />
+                          <MagBadge magnitude={6.5} size="sm" labelOverride="Besar" />
                         </td>
-                        <td className="mono">Magnitudo M 6,0–6,9</td>
+                        <td className="mono">Besar · M 6,0–6,9</td>
                         <td>Energi besar; berpotensi merusak di kawasan berpenduduk dekat episenter.</td>
                       </tr>
                       <tr>
                         <td>
-                          <MagBadge magnitude={7.5} size="sm" labelOverride="M 7+" />
+                          <MagBadge magnitude={7.5} size="sm" labelOverride="Dahsyat" />
                         </td>
-                        <td className="mono">Magnitudo M ≥ 7,0</td>
+                        <td className="mono">Dahsyat · M ≥ 7,0</td>
                         <td>Kerusakan struktural luas; hiposenter dangkal di laut dapat memicu tsunami.</td>
                       </tr>
                     </tbody>

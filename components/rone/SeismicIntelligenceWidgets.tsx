@@ -11,9 +11,11 @@ import {
   fmtNumber,
   fmtRelative,
   magBucket,
+  magCategory,
   RoneEarthquake,
   RoneRealtimeEvent,
 } from "@/lib/rone/format";
+import { MagBadge } from "./RoneIcons";
 
 function haversineKm(
   lat1: number,
@@ -321,12 +323,7 @@ export function SeismicCapsuleTimeline({
                   )})`}
                 >
                   <span className="capsule-bar__label">{ev.region}</span>
-                  <span
-                    className="mag mag--sm capsule-bar__mag"
-                    data-m={bucket}
-                  >
-                    <span className="mag__num">M {fmtMag(ev.magnitude)}</span>
-                  </span>
+                  <MagBadge magnitude={ev.magnitude} size="sm" />
                 </button>
               </div>
             </motion.div>
@@ -380,21 +377,21 @@ export function SeismicMagnitudeSplineCard({
     return [
       {
         key: "high",
-        label: "Tinggi (M 5,0+)",
+        label: "Kuat & Besar (M 5,0+)",
         bucket: "5" as const,
         count: highList.length,
         pct: Math.round((highList.length / total) * 100),
       },
       {
         key: "mid",
-        label: "Menengah (M 4,0–4,9)",
+        label: "Sedang (M 4,0–4,9)",
         bucket: "4" as const,
         count: midList.length,
         pct: Math.round((midList.length / total) * 100),
       },
       {
         key: "low",
-        label: "Ringan (M < 4,0)",
+        label: "Ringan & Mikro (M < 4,0)",
         bucket: "3" as const,
         count: lowList.length,
         pct: Math.max(
@@ -488,23 +485,15 @@ export function SeismicMagnitudeSplineCard({
 
       <div className="spline-widget__hero-val">
         <div className="spline-widget__hero-row">
-          <strong className="spline-widget__big mono">
-            M {fmtMag(activePt.ev.magnitude)}
-          </strong>
-          <span
-            className="mag mag--sm"
-            data-m={activePt.bucket}
-          >
-            <span className="mag__num">
-              {activePt.ev.magnitude >= 6
-                ? "Kuat"
-                : activePt.ev.magnitude >= 5
-                  ? "Tinggi"
-                  : activePt.ev.magnitude >= 4
-                    ? "Menengah"
-                    : "Ringan"}
+          <MagBadge magnitude={activePt.ev.magnitude} />
+          <div className="spline-widget__hero-copy">
+            <strong className="spline-widget__big mono">
+              M {fmtMag(activePt.ev.magnitude)}
+            </strong>
+            <span className="spline-widget__cat">
+              Kategori {magCategory(activePt.ev.magnitude)}
             </span>
-          </span>
+          </div>
         </div>
         <span className="spline-widget__sub">
           Rerata sampel M {fmtMag(avgMag)}
@@ -630,6 +619,7 @@ export function StackedQuickQuakesDeck({
           title: realtimeTop.region,
           mag: realtimeTop.magnitude,
           depth: realtimeTop.depth_km,
+          time: realtimeTop.origin_time,
           onClick: () => onPickRealtime(realtimeTop),
         }
       : null,
@@ -641,6 +631,7 @@ export function StackedQuickQuakesDeck({
           title: feltTop.region,
           mag: feltTop.magnitude,
           depth: feltTop.depth_km,
+          time: feltTop.origin_time,
           onClick: () => onPickFelt(feltTop),
         }
       : null,
@@ -652,6 +643,7 @@ export function StackedQuickQuakesDeck({
           title: significantTop.region,
           mag: significantTop.magnitude,
           depth: significantTop.depth_km,
+          time: significantTop.origin_time,
           onClick: () => onPickSignificant(significantTop),
         }
       : null,
@@ -662,6 +654,7 @@ export function StackedQuickQuakesDeck({
     title: string;
     mag: number;
     depth: number;
+    time: string;
     onClick: () => void;
   }>;
 
@@ -697,13 +690,11 @@ export function StackedQuickQuakesDeck({
               <div className="quake-deck__row2">
                 <div className="quake-deck__info">
                   <span className="quake-deck__badge">
-                    {c.badge} · {fmtDepth(c.depth)}
+                    {c.badge} · {fmtDateTime(c.time)} · {fmtDepth(c.depth)}
                   </span>
                   <span className="quake-deck__region">{c.title}</span>
                 </div>
-                <span className="mag" data-m={bucket}>
-                  <span className="mag__num">M {fmtMag(c.mag)}</span>
-                </span>
+                <MagBadge magnitude={c.mag} />
               </div>
             </button>
           );
@@ -1010,12 +1001,10 @@ export function HypocenterDepthCrossSection({
 
       <div className="depth-footer">
         <div className="depth-footer__active">
-          <span className="mag mag--sm" data-m={targetBucket}>
-            <span className="mag__num">M {fmtMag(target.magnitude)}</span>
-          </span>
+          <MagBadge magnitude={target.magnitude} />
           <strong>{target.region}</strong>
           <span className="muted xsmall">
-            {fmtRelative(target.origin_time, nowMs)}
+            {fmtDateTime(target.origin_time)} · {fmtRelative(target.origin_time, nowMs)}
           </span>
           <button
             type="button"

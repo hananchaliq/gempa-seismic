@@ -61,9 +61,12 @@ export interface RoneTsunamiZone {
 }
 
 export interface RoneTsunamiObservation {
-  station: string;
+  station?: string;
   location: string;
-  time: string;
+  latitude?: number;
+  longitude?: number;
+  time?: string;
+  observed_at?: string;
   height_m: number;
 }
 
@@ -74,7 +77,8 @@ export interface RoneTsunamiBulletin {
   magnitude: number;
   headline?: string;
   description?: string;
-  zones: RoneTsunamiZone[];
+  zones?: RoneTsunamiZone[];
+  warning_zones?: RoneTsunamiZone[];
   observations: RoneTsunamiObservation[];
   media?: {
     warning_zones?: string | null;
@@ -134,7 +138,6 @@ const tzLong = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-  second: "2-digit",
   hour12: false,
 });
 
@@ -142,7 +145,6 @@ const tzTime = new Intl.DateTimeFormat("id-ID", {
   timeZone: "Asia/Jakarta",
   hour: "2-digit",
   minute: "2-digit",
-  second: "2-digit",
   hour12: false,
 });
 
@@ -198,16 +200,80 @@ export function fmtCoords(lat: number, lon: number): string {
   return `${num2.format(Math.abs(lat))}° ${ns}, ${num2.format(Math.abs(lon))}° ${ew}`;
 }
 
+const FLEX_MONTHS: Record<string, string> = {
+  jan: "01",
+  feb: "02",
+  mar: "03",
+  apr: "04",
+  may: "05",
+  mei: "05",
+  jun: "06",
+  jul: "07",
+  aug: "08",
+  agu: "08",
+  sep: "09",
+  oct: "10",
+  okt: "10",
+  nov: "11",
+  dec: "12",
+  des: "12",
+};
+
+function parseFlexibleDate(raw: string): Date | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  const m = trimmed.match(
+    /^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})\s+(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?/
+  );
+  if (m) {
+    const day = m[1].padStart(2, "0");
+    const mon = FLEX_MONTHS[m[2].toLowerCase()];
+    const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
+    const hh = m[4].padStart(2, "0");
+    const mm = m[5].padStart(2, "0");
+    if (mon) {
+      const d = new Date(`${yr}-${mon}-${day}T${hh}:${mm}:00+07:00`);
+      if (!Number.isNaN(d.getTime())) return d;
+    }
+  }
+  const d = new Date(trimmed);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function stripSecondsFallback(raw: string): string {
+  return raw
+    .replace(/(\b\d{1,2})[:.](\d{2})(?:[:.]\d{2})?\b/g, "$1.$2")
+    .trim();
+}
+
 export function fmtDateTime(iso: string): string {
-  return `${tzDateTime.format(new Date(iso))} WIB`;
+  if (!iso) return "–";
+  const d = parseFlexibleDate(iso);
+  if (!d) return stripSecondsFallback(iso);
+  return `${tzDateTime.format(d)} WIB`;
 }
 
 export function fmtLong(iso: string): string {
-  return `${tzLong.format(new Date(iso))} WIB`;
+  if (!iso) return "–";
+  const d = parseFlexibleDate(iso);
+  if (!d) return stripSecondsFallback(iso);
+  return `${tzLong.format(d)} WIB`;
 }
 
 export function fmtTime(iso: string): string {
-  return `${tzTime.format(new Date(iso))} WIB`;
+  if (!iso) return "–";
+  const d = parseFlexibleDate(iso);
+  if (!d) return stripSecondsFallback(iso);
+  return `${tzTime.format(d)} WIB`;
+}
+
+export function fmtTimeOnly(iso: string): string {
+  if (!iso) return "–";
+  const d = parseFlexibleDate(iso);
+  if (!d) {
+    return stripSecondsFallback(iso).replace(/\s*WIB$/i, "").trim();
+  }
+  return tzTime.format(d);
 }
 
 export function fmtClockWib(date: Date = new Date()): string {
@@ -242,9 +308,21 @@ export function magBucket(m: number): "0" | "3" | "4" | "5" | "6" | "7" {
   return "0";
 }
 
-export function magCategory(m: number): string {
-  if (!Number.isFinite(m)) return "Magnitudo";
-  return "Magnitudo";
+export type SeismicStrengthCategory =
+  | "Mikro"
+  | "Ringan"
+  | "Sedang"
+  | "Kuat"
+  | "Besar"
+  | "Dahsyat";
+
+export function magCategory(m: number): SeismicStrengthCategory {
+  if (!Number.isFinite(m) || m < 3) return "Mikro";
+  if (m < 4) return "Ringan";
+  if (m < 5) return "Sedang";
+  if (m < 6) return "Kuat";
+  if (m < 7) return "Besar";
+  return "Dahsyat";
 }
 
 export function magScaleRange(m: number): string {
@@ -259,37 +337,37 @@ export function magScaleRange(m: number): string {
 export interface MagTierInfo {
   bucket: "0" | "3" | "4" | "5" | "6" | "7";
   shortTag: string;
-  levelLabel: "Rendah" | "Ringan" | "Menengah" | "Tinggi" | "Kuat" | "Ekstrem";
+  levelLabel: SeismicStrengthCategory;
   isHigh: boolean;
 }
 
 export function magTierInfo(m: number): MagTierInfo {
   const bucket = magBucket(m);
   if (bucket === "7") {
-    return { bucket, shortTag: "M 7+", levelLabel: "Ekstrem", isHigh: true };
+    return { bucket, shortTag: "M 7+", levelLabel: "Dahsyat", isHigh: true };
   }
   if (bucket === "6") {
-    return { bucket, shortTag: "M 6", levelLabel: "Kuat", isHigh: true };
+    return { bucket, shortTag: "M 6", levelLabel: "Besar", isHigh: true };
   }
   if (bucket === "5") {
-    return { bucket, shortTag: "M 5", levelLabel: "Tinggi", isHigh: true };
+    return { bucket, shortTag: "M 5", levelLabel: "Kuat", isHigh: true };
   }
   if (bucket === "4") {
-    return { bucket, shortTag: "M 4", levelLabel: "Menengah", isHigh: false };
+    return { bucket, shortTag: "M 4", levelLabel: "Sedang", isHigh: false };
   }
   if (bucket === "3") {
     return { bucket, shortTag: "M 3", levelLabel: "Ringan", isHigh: false };
   }
-  return { bucket: "0", shortTag: "M <3", levelLabel: "Rendah", isHigh: false };
+  return { bucket: "0", shortTag: "M <3", levelLabel: "Mikro", isHigh: false };
 }
 
 export function magColorHex(m: number, isDark = false): string {
   const b = magBucket(m);
   if (b === "7") return "#F43F5E";
   if (b === "6") return "#EF4444";
-  if (b === "5") return "#F97316";
+  if (b === "5") return "#EA580C";
   if (b === "4") return "#F59E0B";
-  if (b === "3") return "#14B8A6";
+  if (b === "3") return "#EAB308";
   return isDark ? "#94A3B8" : "#64748B";
 }
 

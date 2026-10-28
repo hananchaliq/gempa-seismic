@@ -17,7 +17,7 @@ import {
   RoneHistoryRecord,
   RoneRealtimeEvent,
 } from "@/lib/rone/format";
-import { FactsList, MagBadge, RoneIcon } from "./RoneIcons";
+import { FactsList, MagBadge, MagDial, RoneIcon } from "./RoneIcons";
 
 export type DetailTarget =
   | { kind: "felt"; data: RoneEarthquake }
@@ -350,7 +350,7 @@ export function RoneDetailSheet({
       >
         <div className="sheet__head">
           <span id="detail-badge">
-            <MagBadge magnitude={ev.magnitude} size="lg" />
+            <MagDial magnitude={ev.magnitude} size="compact" />
           </span>
           <div className="sheet__heading">
             <h2 className="sheet__title" id="detail-title" tabIndex={-1}>
@@ -538,7 +538,7 @@ export function RoneDetailSheet({
                           {historyRecords.map((r, i) => (
                             <tr key={`${r.timestamp}-${i}`}>
                               <td className="mono nowrap">
-                                {fmtTime(r.timestamp).replace(" WIB", "")}
+                                {fmtDateTime(r.timestamp)}
                               </td>
                               <td className="num">
                                 {r.minutes_after_origin == null
