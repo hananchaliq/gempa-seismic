@@ -204,7 +204,7 @@ export function EpicenterDistanceBar({
     >
       <div className="seismic-calc__top">
         <div className="seismic-calc__title">
-          <span className="seismic-calc__kicker">Jarak &amp; Waktu Tiba Gelombang</span>
+          <span className="seismic-calc__kicker">Estimasi Jarak &amp; Gelombang</span>
           <span className="seismic-calc__feel">{metrics.feelEstimate}</span>
         </div>
         <div className="seismic-calc__controls">
@@ -221,11 +221,11 @@ export function EpicenterDistanceBar({
               }}
             >
               {userPoint.isGps ? (
-                <option value="gps">GPS Saya ({userPoint.label})</option>
+                <option value="gps">GPS ({userPoint.label})</option>
               ) : null}
               {INDONESIA_REFERENCE_CITIES.map((city) => (
                 <option key={city.id} value={city.id}>
-                  Dari {city.label}
+                  {city.label}
                 </option>
               ))}
             </select>
@@ -244,19 +244,19 @@ export function EpicenterDistanceBar({
 
       <div className="seismic-calc__grid">
         <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Radius Episenter</span>
+          <span className="seismic-calc__label">Jarak</span>
           <strong className="seismic-calc__val mono">
             {fmtNumber(metrics.surfaceKm)} <small>km</small>
           </strong>
         </div>
         <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Tiba Gelombang P / S</span>
+          <span className="seismic-calc__label">Gelombang P / S</span>
           <strong className="seismic-calc__val mono">
             {`${formatCompactSec(metrics.pWaveSec)} / ${formatCompactSec(metrics.sWaveSec)}`}
           </strong>
         </div>
         <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Selisih S–P (Δt)</span>
+          <span className="seismic-calc__label">Selisih S–P</span>
           <strong className="seismic-calc__val mono">
             {`+${formatCompactSec(metrics.deltaPS)}`}
           </strong>
@@ -279,10 +279,10 @@ export function SeismicCapsuleTimeline({
   activeId?: string;
   onSelect: (ev: RoneRealtimeEvent) => void;
 }) {
-  const items = events.slice(0, 5);
+  const items = events.slice(0, 4);
   if (!items.length) return null;
 
-  const offsets = [4, 16, 24, 8, 18];
+  const offsets = [0, 6, 12, 4];
 
   return (
     <div className="capsule-timeline" aria-label="Kronologi deteksi terbaru">
@@ -377,21 +377,21 @@ export function SeismicMagnitudeSplineCard({
     return [
       {
         key: "high",
-        label: "Kuat & Besar (M 5,0+)",
+        label: "M 5,0+ (Kuat)",
         bucket: "5" as const,
         count: highList.length,
         pct: Math.round((highList.length / total) * 100),
       },
       {
         key: "mid",
-        label: "Sedang (M 4,0–4,9)",
+        label: "M 4,0–4,9 (Sedang)",
         bucket: "4" as const,
         count: midList.length,
         pct: Math.round((midList.length / total) * 100),
       },
       {
         key: "low",
-        label: "Ringan & Mikro (M < 4,0)",
+        label: "M < 4,0 (Ringan)",
         bucket: "3" as const,
         count: lowList.length,
         pct: Math.max(
@@ -639,7 +639,7 @@ export function StackedQuickQuakesDeck({
       ? {
           id: `sig-${significantTop.event_id}`,
           eventId: significantTop.event_id,
-          badge: "SIGNIFIKAN M 5+",
+          badge: "M 5+",
           title: significantTop.region,
           mag: significantTop.magnitude,
           depth: significantTop.depth_km,
@@ -671,13 +671,12 @@ export function StackedQuickQuakesDeck({
     >
       <div className="quake-deck__head">
         <span className="quake-deck__title">Kanal Prioritas</span>
-        <span className="quake-deck__pill">Live BMKG</span>
+        <span className="quake-deck__pill">BMKG</span>
       </div>
 
       <div className="quake-deck__stack">
         {cards.map((c, idx) => {
           const isCurrent = c.eventId === activeId || (idx === 0 && !activeId);
-          const bucket = magBucket(c.mag);
           return (
             <button
               key={c.id}
@@ -690,11 +689,11 @@ export function StackedQuickQuakesDeck({
               <div className="quake-deck__row2">
                 <div className="quake-deck__info">
                   <span className="quake-deck__badge">
-                    {c.badge} · {fmtDateTime(c.time)} · {fmtDepth(c.depth)}
+                    {c.badge} · {fmtDepth(c.depth)}
                   </span>
                   <span className="quake-deck__region">{c.title}</span>
                 </div>
-                <MagBadge magnitude={c.mag} />
+                <MagBadge magnitude={c.mag} size="sm" />
               </div>
             </button>
           );

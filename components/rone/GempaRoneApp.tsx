@@ -93,19 +93,19 @@ const NAV_ITEMS: NavItem[] = [
   { key: "tsunami", path: "/tsunami", label: "Tsunami", shortLabel: "Tsunami", icon: "wave" },
   { key: "damaging", path: "/damage", label: "Merusak", shortLabel: "Merusak", icon: "shield" },
   { key: "map", path: "/map", label: "Peta", shortLabel: "Peta", icon: "compass" },
-  { key: "about", path: "/about", label: "Tentang", shortLabel: "Tentang", icon: "info" },
+  { key: "about", path: "/about", label: "Info", shortLabel: "Info", icon: "info" },
 ];
 
 const TAB_TITLES: Record<RoneTabKey, [string, string]> = {
-  home: ["Gempa", "Seismic"],
+  home: ["Pantauan", "Terkini"],
   realtime: ["Deteksi", "Realtime"],
   felt: ["Gempa", "Dirasakan"],
-  significant: ["Signifikan", "M 5,0+"],
+  significant: ["Signifikan", "M 5+"],
   tsunami: ["Peringatan", "Tsunami"],
   damaging: ["Katalog", "Merusak"],
-  map: ["Peta", "Seismisitas"],
-  about: ["Data &", "Parameter"],
-  docs: ["Dokumentasi", "OpenAPI"],
+  map: ["Peta", "Seismik"],
+  about: ["Info &", "Parameter"],
+  docs: ["Dokumentasi", "API"],
 };
 
 const DAY_MS = 86_400_000;
@@ -635,7 +635,7 @@ export function GempaRoneApp({
       Boolean(summaryStats.activeTsunami) ||
       Boolean(activeHeroQuake.tsunami_potential);
     const safetyLabel = hasTsunamiWarn
-      ? "Waspada · Cek Buletin Tsunami BMKG"
+      ? "Waspada Potensi Tsunami"
       : "Aman · Tidak Berpotensi Tsunami";
     const depthInfo = depthCategoryLabel(activeHeroQuake.depth_km);
 
@@ -783,7 +783,6 @@ export function GempaRoneApp({
             </span>
             <span className="sidebar-brand__copy">
               <strong>Gempa Seismic</strong>
-              <span>BMKG InaTEWS Live</span>
             </span>
           </button>
 
@@ -814,18 +813,16 @@ export function GempaRoneApp({
               <span className="sidebar-nav__icon">
                 <RoneIcon name="code" />
               </span>
-              <span className="sidebar-nav__label">API JSON</span>
+              <span className="sidebar-nav__label">API</span>
             </button>
           </nav>
 
-          {/* Reference Image Bottom-Left Profile/Location Pod ("Lucas Morel" motif) */}
+          {/* Compact Location Reference Pod */}
           <div className="sidebar-pod" aria-label="Lokasi referensi kalkulasi jarak">
-            <div className="sidebar-pod__avatar" aria-hidden="true">
-              <RoneIcon name="pin" />
-            </div>
-            <strong className="sidebar-pod__name">{userPoint.label}</strong>
-            <span className="sidebar-pod__role">Stasiun Referensi Jarak</span>
             <div className="sidebar-pod__controls">
+              <span className="sidebar-pod__pin" aria-hidden="true">
+                <RoneIcon name="pin" />
+              </span>
               <label className="sidebar-pod__select-wrap">
                 <span className="visually-hidden">Pilih kota referensi</span>
                 <select
@@ -863,15 +860,37 @@ export function GempaRoneApp({
 
         {/* ==================== MAIN WORKSPACE ==================== */}
         <div className="workspace-main">
-          {/* Top Contextual Workspace Bar (Matches "Web Design" + Utility Capsule Bar on Row 1, Date/Mode Subbar on Row 2) */}
+          {/* Compact Top Contextual Workspace Bar */}
           <header className="workspace-topbar">
             <div className="workspace-topbar__row1">
-              <h1 className="workspace-display-title">
-                <span>{titleLine1}</span>
-                <span>{titleLine2}</span>
-              </h1>
+              <div className="workspace-title-group">
+                <h1 className="workspace-display-title">
+                  {titleLine1} {titleLine2}
+                </h1>
+                {activeTab === "home" && (
+                  <div className="workspace-mode-pills" role="group" aria-label="Mode pantauan cepat">
+                    <button
+                      type="button"
+                      className={`mode-pill${heroMode === "realtime" ? " is-active" : ""}`}
+                      onClick={() => {
+                        setHeroMode("realtime");
+                        setFocusedRealtime(null);
+                      }}
+                    >
+                      Realtime
+                    </button>
+                    <button
+                      type="button"
+                      className={`mode-pill${heroMode === "felt" ? " is-active" : ""}`}
+                      onClick={() => setHeroMode("felt")}
+                    >
+                      Dirasakan
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              {/* Right Utility Capsule Bar ("Vue jour | 22° | Rechercher... | Bell | Dots") */}
+              {/* Compact Right Utility Capsule Bar */}
               <div className="topbar-capsule">
                 <div
                   className="topbar-widget"
@@ -880,37 +899,11 @@ export function GempaRoneApp({
                   aria-live="polite"
                   title="Pembaruan otomatis setiap 30 detik dari jaringan sensor BMKG"
                 >
-                  <span className="circle-icon circle-icon--obsidian" aria-hidden="true">
-                    <RoneIcon name="calendar" />
+                  <span className="live-pulse-dot" aria-hidden="true" />
+                  <strong id="live-label">{liveOk ? "Live" : "Gangguan"}</strong>
+                  <span className="topbar-widget__time mono">
+                    {liveTimeLabel.replace("Diperbarui ", "")}
                   </span>
-                  <div className="topbar-widget__copy">
-                    <strong id="live-label" className="live-label-row">
-                      <span className="live-pulse-dot" aria-hidden="true" />
-                      {liveOk ? `Live · ${pollCountdown}d` : "Gangguan"}
-                    </strong>
-                    <span className="mono">{liveTimeLabel.replace("Diperbarui ", "")} WIB</span>
-                  </div>
-                </div>
-
-                <div
-                  className="topbar-widget topbar-widget--peak"
-                  title="Magnitudo terbesar dalam 24 jam terakhir"
-                >
-                  {summaryStats.strongest ? (
-                    <MagBadge magnitude={summaryStats.strongest.magnitude} size="sm" />
-                  ) : (
-                    <span className="topbar-widget__sun" aria-hidden="true">
-                      <RoneIcon name="pulse" />
-                    </span>
-                  )}
-                  <div className="topbar-widget__copy">
-                    <strong>Terkuat 24j</strong>
-                    <span>
-                      {summaryStats.strongest
-                        ? magTierInfo(summaryStats.strongest.magnitude).levelLabel
-                        : "Magnitudo"}
-                    </span>
-                  </div>
                 </div>
 
                 <form
@@ -939,7 +932,7 @@ export function GempaRoneApp({
                   </button>
                   <input
                     type="search"
-                    placeholder="Cari wilayah gempa…"
+                    placeholder="Cari wilayah…"
                     aria-label="Cari wilayah gempa"
                     value={quickSearch}
                     onChange={(e) => {
@@ -952,9 +945,6 @@ export function GempaRoneApp({
                       if (activeTab === "damaging") setDmgQuery(val);
                     }}
                   />
-                  <span className="topbar-search__kbd" aria-hidden="true">
-                    ↵
-                  </span>
                 </form>
 
                 <button
@@ -991,57 +981,10 @@ export function GempaRoneApp({
                   id="theme-toggle"
                   aria-label="Ganti tema terang/gelap"
                   onClick={toggleTheme}
-                  title="Ganti tema Alabaster Terang / Obsidian Gelap"
+                  title="Ganti tema Terang / Gelap"
                 >
                   <RoneIcon name="moon" className="icon theme-icon-light" />
                   <RoneIcon name="sun" className="icon theme-icon-dark" />
-                </button>
-              </div>
-            </div>
-
-            <div className="workspace-subbar">
-              <span className="workspace-date mono">
-                {formattedToday} <RoneIcon name="chevron-down" />
-              </span>
-              <div className="workspace-mode-pills" role="group" aria-label="Mode pantauan cepat">
-                <button
-                  type="button"
-                  className={`mode-pill${
-                    activeTab === "home" && heroMode === "realtime" ? " is-active" : ""
-                  }`}
-                  onClick={() => {
-                    setHeroMode("realtime");
-                    setFocusedRealtime(null);
-                    if (activeTab !== "home") navigateTab("home");
-                  }}
-                >
-                  Realtime
-                </button>
-                <button
-                  type="button"
-                  className={`mode-pill${
-                    activeTab === "home" && heroMode === "felt" ? " is-active" : ""
-                  }`}
-                  onClick={() => {
-                    setHeroMode("felt");
-                    if (activeTab !== "home") navigateTab("home");
-                  }}
-                >
-                  ShakeMap
-                </button>
-                <button
-                  type="button"
-                  className={`mode-pill${activeTab === "realtime" ? " is-active" : ""}`}
-                  onClick={() => navigateTab("realtime")}
-                >
-                  Tabel ({realtime.length})
-                </button>
-                <button
-                  type="button"
-                  className={`mode-pill${activeTab === "significant" ? " is-active" : ""}`}
-                  onClick={() => navigateTab("significant")}
-                >
-                  M 5+
                 </button>
               </div>
             </div>
@@ -1087,9 +1030,9 @@ export function GempaRoneApp({
                         <span className="hero__kicker">
                           {heroMode === "realtime"
                             ? focusedRealtime
-                              ? "Fokus Sensor Terpilih"
-                              : "Deteksi Sensor Otomatis"
-                            : "Gempa Dirasakan (ShakeMap)"}
+                              ? "Fokus"
+                              : "Realtime"
+                            : "Dirasakan"}
                         </span>
                         {activeHeroQuake ? (
                           <span className="pill">
@@ -1101,12 +1044,7 @@ export function GempaRoneApp({
                         {activeHeroQuake ? activeHeroQuake.region : "Memuat data BMKG…"}
                       </h2>
                       <p className="hero__time" id="latest-time">
-                        {activeHeroQuake ? (
-                          <>
-                            {fmtDateTime(activeHeroQuake.origin_time)} ·{" "}
-                            <span>{fmtDepth(activeHeroQuake.depth_km)}</span>
-                          </>
-                        ) : null}
+                        {activeHeroQuake ? fmtDateTime(activeHeroQuake.origin_time) : null}
                       </p>
                     </div>
                   </div>
@@ -1140,11 +1078,11 @@ export function GempaRoneApp({
                               }}
                             >
                               {userPoint.isGps ? (
-                                <option value="gps">Lokasi: GPS ({userPoint.label})</option>
+                                <option value="gps">GPS ({userPoint.label})</option>
                               ) : null}
                               {INDONESIA_REFERENCE_CITIES.map((city) => (
                                 <option key={city.id} value={city.id}>
-                                  Lokasi: {city.label}
+                                  {city.label}
                                 </option>
                               ))}
                             </select>
@@ -1162,9 +1100,7 @@ export function GempaRoneApp({
 
                       <div className="layman-summary__grid">
                         <div className="layman-tile">
-                          <span className="layman-tile__label">
-                            Jarak ({userPoint.label})
-                          </span>
+                          <span className="layman-tile__label">Jarak</span>
                           <strong className="layman-tile__val mono">
                             {fmtNumber(heroLaymanSummary.surfaceDist)} km
                           </strong>
@@ -1172,17 +1108,14 @@ export function GempaRoneApp({
                         <div className="layman-tile">
                           <span className="layman-tile__label">Kedalaman</span>
                           <strong className="layman-tile__val mono">
-                            {fmtDepth(activeHeroQuake.depth_km)} · {heroLaymanSummary.depthTier}
+                            {fmtDepth(activeHeroQuake.depth_km)}
                           </strong>
                         </div>
                         <div className="layman-tile">
-                          <span className="layman-tile__label">Kategori M</span>
-                          <div className="layman-tile__badge-row">
-                            <MagBadge magnitude={activeHeroQuake.magnitude} size="sm" />
-                            <span className="layman-tile__tier">
-                              {magTierInfo(activeHeroQuake.magnitude).levelLabel}
-                            </span>
-                          </div>
+                          <span className="layman-tile__label">Kategori</span>
+                          <strong className="layman-tile__val">
+                            {magCategory(activeHeroQuake.magnitude)}
+                          </strong>
                         </div>
                       </div>
                     </div>
@@ -1223,7 +1156,7 @@ export function GempaRoneApp({
                         }
                       }}
                     >
-                      Inspeksi Detail &amp; Peta
+                      Detail &amp; Peta
                     </button>
                     <button
                       className="btn"
@@ -1232,7 +1165,7 @@ export function GempaRoneApp({
                         navigateTab(heroMode === "felt" ? "felt" : "realtime")
                       }
                     >
-                      Tabel {fmtNumber(realtime.length)} Deteksi →
+                      Semua ({fmtNumber(realtime.length)}) →
                     </button>
                   </div>
                 </motion.article>
@@ -1389,22 +1322,13 @@ export function GempaRoneApp({
                                 setDetailTarget({ kind: "realtime", data: ev });
                               }}
                             >
-                              <MagBadge magnitude={ev.magnitude} />
+                              <MagBadge magnitude={ev.magnitude} size="sm" />
                               <span className="file-pill-item__body">
                                 <strong>{ev.region}</strong>
                                 <span>
-                                  {fmtDateTime(ev.origin_time)} · {fmtDepth(ev.depth_km)} ·{" "}
-                                  {fmtRelative(ev.origin_time, nowMs)}
+                                  {fmtDepth(ev.depth_km)} · {fmtRelative(ev.origin_time, nowMs)}
                                 </span>
                               </span>
-                              {tier.isHigh ? (
-                                <span
-                                  className="high-mag-tag"
-                                  data-m={tier.bucket}
-                                >
-                                  {tier.levelLabel}
-                                </span>
-                              ) : null}
                             </button>
                           </li>
                         );
@@ -1413,7 +1337,7 @@ export function GempaRoneApp({
                   </div>
                 </motion.section>
 
-                {/* MOBILE-ONLY ANALYTICS TOGGLE BAR: Keeps Mobile view ultra-simple for laymen while allowing 1-tap access to full charts */}
+                {/* MOBILE-ONLY ANALYTICS TOGGLE BAR */}
                 <div className="mobile-analytics-toggle-wrap">
                   <button
                     type="button"
@@ -1423,14 +1347,14 @@ export function GempaRoneApp({
                   >
                     <span>
                       {mobileAnalyticsOpen
-                        ? "Sembunyikan Grafik & Analisis Teknis"
-                        : "Tampilkan Grafik & Analisis Teknis (Kurva M, Penampang 2D & Tren 3 Bulan)"}
+                        ? "Sembunyikan Grafik & Statistik"
+                        : "Lihat Grafik & Statistik Teknis"}
                     </span>
                     <RoneIcon name="chevron-down" />
                   </button>
                 </div>
 
-                {/* BOTTOM-RIGHT WIDE CARD: TELEMETRY SUMMARY BAR + OBSIDIAN 3-COLUMN PROGRESS POD (Matches "Équipe" card) */}
+                {/* BOTTOM-RIGHT WIDE CARD: TELEMETRY SUMMARY BAR + OBSIDIAN 3-COLUMN PROGRESS POD */}
                 <motion.section
                   key={`overview-panel-${refreshCycle}`}
                   className={`card bento-ref__equipe mobile-collapsible-panel${
@@ -1450,16 +1374,16 @@ export function GempaRoneApp({
 
                     <div className="equipe-summary__metrics">
                       <div className="equipe-metric">
-                        <span className="equipe-metric__label">Gempa 24 jam</span>
+                        <span className="equipe-metric__label">24 Jam</span>
                         <div className="equipe-metric__row">
                           <strong className="mono">{fmtNumber(summaryStats.day.length)}</strong>
                           <span className="equipe-metric__bar" />
-                          <small className="mono">+{realtime.length}</small>
+                          <small className="mono">/{realtime.length}</small>
                         </div>
                       </div>
 
                       <div className="equipe-metric">
-                        <span className="equipe-metric__label">Terkuat 24 jam</span>
+                        <span className="equipe-metric__label">Terkuat 24j</span>
                         <div className="equipe-metric__row">
                           <strong className="mono">
                             {summaryStats.strongest
@@ -1467,17 +1391,21 @@ export function GempaRoneApp({
                               : "–"}
                           </strong>
                           <span className="equipe-metric__bar" />
-                          <small>Magnitudo</small>
+                          <small>
+                            {summaryStats.strongest
+                              ? magCategory(summaryStats.strongest.magnitude)
+                              : "–"}
+                          </small>
                         </div>
                       </div>
 
                       <div className="equipe-metric">
-                        <span className="equipe-metric__label">M 5+ (7 hari)</span>
+                        <span className="equipe-metric__label">M 5+ (7 Hari)</span>
                         <div className="equipe-metric__row">
                           <strong className="mono">{fmtNumber(summaryStats.m5week.length)}</strong>
                           <span className="equipe-metric__bar" />
                           <small>
-                            {summaryStats.activeTsunami ? "Tsunami Aktif" : "Tsunami Aman"}
+                            {summaryStats.activeTsunami ? "Tsunami Aktif" : "Aman"}
                           </small>
                         </div>
                       </div>
@@ -1506,106 +1434,97 @@ export function GempaRoneApp({
                     </svg>
                   </div>
 
-                  {/* Nested Obsidian Black 3-Column Telemetry Progress Card (Clean & Uncluttered) */}
+                  {/* Nested Obsidian Black 3-Column Telemetry Progress Card */}
                   <div className="obsidian-trio">
                     <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__head">
-                        <strong>Kerak Dangkal (&lt; 60 km)</strong>
-                        <span>{fmtNumber(summaryStats.shallowCount)} deteksi sesar aktif</span>
+                      <div className="obsidian-trio__prog-label">
+                        <strong>Dangkal (&lt;60 km)</strong>
+                        <span className="mono">
+                          {Math.round(
+                            (summaryStats.shallowCount / Math.max(1, realtime.length)) * 100
+                          )}
+                          %
+                        </span>
                       </div>
-                      <div className="obsidian-trio__prog">
-                        <div className="obsidian-trio__prog-label">
-                          <span>Proporsi Dangkal</span>
-                          <span className="mono">
-                            {Math.round(
-                              (summaryStats.shallowCount / Math.max(1, realtime.length)) * 100
-                            )}
-                            %
-                          </span>
-                        </div>
-                        <div className="obsidian-trio__bar">
-                          <span
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.round(
-                                  (summaryStats.shallowCount /
-                                    Math.max(1, realtime.length)) *
-                                    100
-                                )
-                              )}%`,
-                            }}
-                          />
-                        </div>
+                      <div className="obsidian-trio__bar">
+                        <span
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                (summaryStats.shallowCount /
+                                  Math.max(1, realtime.length)) *
+                                  100
+                              )
+                            )}%`,
+                          }}
+                        />
                       </div>
+                      <span className="obsidian-trio__meta">
+                        {fmtNumber(summaryStats.shallowCount)} kejadian
+                      </span>
                     </div>
 
                     <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__head">
+                      <div className="obsidian-trio__prog-label">
                         <strong>Subduksi (60–300 km)</strong>
-                        <span>{fmtNumber(summaryStats.subductionCount)} deteksi lempeng</span>
+                        <span className="mono">
+                          {Math.round(
+                            (summaryStats.subductionCount /
+                              Math.max(1, realtime.length)) *
+                              100
+                          )}
+                          %
+                        </span>
                       </div>
-                      <div className="obsidian-trio__prog">
-                        <div className="obsidian-trio__prog-label">
-                          <span>Proporsi Subduksi</span>
-                          <span className="mono">
-                            {Math.round(
-                              (summaryStats.subductionCount /
-                                Math.max(1, realtime.length)) *
-                                100
-                            )}
-                            %
-                          </span>
-                        </div>
-                        <div className="obsidian-trio__bar">
-                          <span
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.round(
-                                  (summaryStats.subductionCount /
-                                    Math.max(1, realtime.length)) *
-                                    100
-                                )
-                              )}%`,
-                            }}
-                          />
-                        </div>
+                      <div className="obsidian-trio__bar">
+                        <span
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                (summaryStats.subductionCount /
+                                  Math.max(1, realtime.length)) *
+                                  100
+                              )
+                            )}%`,
+                          }}
+                        />
                       </div>
+                      <span className="obsidian-trio__meta">
+                        {fmtNumber(summaryStats.subductionCount)} kejadian
+                      </span>
                     </div>
 
                     <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__head">
-                        <strong>Verifikasi InaTEWS</strong>
-                        <span>{fmtNumber(summaryStats.confirmedCount)} parameter terkonfirmasi</span>
+                      <div className="obsidian-trio__prog-label">
+                        <strong>Terkonfirmasi</strong>
+                        <span className="mono">
+                          {Math.round(
+                            (summaryStats.confirmedCount /
+                              Math.max(1, realtime.length)) *
+                              100
+                          )}
+                          %
+                        </span>
                       </div>
-                      <div className="obsidian-trio__prog">
-                        <div className="obsidian-trio__prog-label">
-                          <span>Terverifikasi Analis</span>
-                          <span className="mono">
-                            {Math.round(
-                              (summaryStats.confirmedCount /
-                                Math.max(1, realtime.length)) *
-                                100
-                            )}
-                            %
-                          </span>
-                        </div>
-                        <div className="obsidian-trio__bar">
-                          <span
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.round(
-                                  (summaryStats.confirmedCount /
-                                    Math.max(1, realtime.length)) *
-                                    100
-                                )
-                              )}%`,
-                            }}
-                          />
-                        </div>
+                      <div className="obsidian-trio__bar">
+                        <span
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.round(
+                                (summaryStats.confirmedCount /
+                                  Math.max(1, realtime.length)) *
+                                  100
+                              )
+                            )}%`,
+                          }}
+                        />
                       </div>
+                      <span className="obsidian-trio__meta">
+                        {fmtNumber(summaryStats.confirmedCount)} kejadian
+                      </span>
                     </div>
                   </div>
 
