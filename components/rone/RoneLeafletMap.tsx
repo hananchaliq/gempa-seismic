@@ -233,7 +233,7 @@ export function RoneLeafletMap({
             opt.setAttribute("role", "menuitemradio");
             opt.dataset.base = item.key;
             opt.setAttribute("aria-checked", String(item === current));
-            opt.innerHTML = `<img src="${item.thumb()}" alt="" loading="lazy" width="44" height="44" referrerpolicy="no-referrer" /><span>${item.label}</span>${iconHTML("check", "icon basemap__check")}`;
+            opt.innerHTML = `<img src="${item.thumb()}" alt="" loading="lazy" width="44" height="44" referrerpolicy="no-referrer" onerror="this.style.display='none'" /><span>${item.label}</span>${iconHTML("check", "icon basemap__check")}`;
             opt.addEventListener("click", () => {
               if (item !== current) {
                 map.removeLayer(current.layer);
@@ -517,13 +517,22 @@ export function RoneLeafletMap({
 
   return (
     <div
-      ref={containerRef}
       id={id}
-      className={className}
+      className={`${className} map-host`}
       role="region"
       aria-label={ariaLabel}
     >
-      {children}
+      <div ref={containerRef} className="map-canvas" />
+      {children ? (
+        <div
+          className="map-overlay-slot"
+          onMouseDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

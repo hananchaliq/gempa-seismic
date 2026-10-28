@@ -5,12 +5,12 @@ import {
   fmtMag,
   fmtRelative,
   magBucket,
-  magCategory,
 } from "@/lib/rone/format";
 
 export const ICON_PATHS: Record<string, string> = {
   "arrow-right": "M5 12h14M13 6l6 6-6 6",
   "arrow-left": "M19 12H5M11 6l-6 6 6 6",
+  "arrow-up-right": "M7 17 17 7M9 7h8v8",
   "chevron-down": "m6 9 6 6 6-6",
   close: "M6 6l12 12M18 6 6 18",
   plus: "M12 5v14M5 12h14",
@@ -30,6 +30,16 @@ export const ICON_PATHS: Record<string, string> = {
   code: "m8 7-5 5 5 5M16 7l5 5-5 5",
   moon: "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z",
   sun: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4",
+  home: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  calendar: "M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z",
+  table: "M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5zm0 5h18M9 10v11",
+  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  compass: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm4.24-14.24-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z",
+  info: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zm0-14v4m0 4h.01",
+  bell: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9m4.3 13a1.94 1.94 0 0 0 3.4 0",
+  refresh: "M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8m0-5v5h5m-5 4a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16m-5 5h5v-5",
+  pin: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M12 10a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z",
+  dots: "M5 12h.01M12 12h.01M19 12h.01",
 };
 
 export function RoneIcon({
@@ -70,13 +80,13 @@ export function MagBadge({
   labelOverride?: string;
 }) {
   const bucket = magBucket(magnitude);
-  const text = labelOverride ?? fmtMag(magnitude);
+  const text = labelOverride ?? `M ${fmtMag(magnitude)}`;
   return (
     <span
       className={`mag${size ? ` mag--${size}` : ""}`}
       data-m={bucket}
       style={{ "--v": magnitude } as React.CSSProperties}
-      title={`Magnitudo ${fmtMag(magnitude)}`}
+      title={`Magnitudo M ${fmtMag(magnitude)}`}
     >
       <span className="mag__num">{text}</span>
     </span>
@@ -91,7 +101,7 @@ export function MagDial({ magnitude }: { magnitude: number }) {
       className="dial"
       data-m={bucket}
       role="img"
-      aria-label={`Magnitudo ${fmtMag(magnitude)}, ${magCategory(magnitude)}`}
+      aria-label={`Magnitudo M ${fmtMag(magnitude)}`}
     >
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <circle className="dial__track" cx="50" cy="50" r="46" pathLength={100} />
@@ -105,8 +115,8 @@ export function MagDial({ magnitude }: { magnitude: number }) {
         />
       </svg>
       <span className="dial__value">
-        <span className="dial__num">{fmtMag(magnitude)}</span>
-        <span className="dial__label">{magCategory(magnitude)}</span>
+        <span className="dial__num">M {fmtMag(magnitude)}</span>
+        <span className="dial__label">Magnitudo</span>
       </span>
     </div>
   );
@@ -115,30 +125,30 @@ export function MagDial({ magnitude }: { magnitude: number }) {
 export function MagLegend() {
   return (
     <div className="legend" aria-label="Legenda magnitudo">
-      <span>Magnitudo</span>
+      <span>Skala Magnitudo (M)</span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-0)" } as React.CSSProperties} />
-        &lt;3
+        M &lt;3
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-3)" } as React.CSSProperties} />
-        3
+        M 3
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-4)" } as React.CSSProperties} />
-        4
+        M 4
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-5)" } as React.CSSProperties} />
-        5
+        M 5
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-6)" } as React.CSSProperties} />
-        6
+        M 6
       </span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-7)" } as React.CSSProperties} />
-        7+
+        M 7+
       </span>
     </div>
   );

@@ -30,6 +30,117 @@ export interface MediaItem {
   src: string;
 }
 
+export function resolveMediaUrl(src?: string | null): string | null {
+  if (!src || typeof src !== "string") return null;
+  const trimmed = src.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return `https://gempa.rone.dev${trimmed}`;
+  }
+  return `https://gempa.rone.dev/${trimmed}`;
+}
+
+function SeismicMediaFallback({
+  label,
+  caption,
+  compact = false,
+}: {
+  label: string;
+  caption?: string;
+  compact?: boolean;
+}) {
+  if (compact) {
+    return (
+      <span className="viewer__tab-fallback" aria-hidden="true">
+        <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+          <rect width="36" height="36" rx="8" fill="#0B2B26" />
+          <circle cx="18" cy="18" r="12" stroke="#8EB69B" strokeOpacity="0.28" strokeDasharray="2 2" />
+          <circle cx="18" cy="18" r="7" stroke="#E87A3E" strokeOpacity="0.55" />
+          <circle cx="18" cy="18" r="2.8" fill="#E87A3E" />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <div className="viewer__fallback" role="img" aria-label={caption || label}>
+      <svg
+        viewBox="0 0 640 360"
+        className="viewer__fallback-svg"
+        preserveAspectRatio="xMidYMid slice"
+        aria-hidden="true"
+      >
+        <defs>
+          <radialGradient id="seismicGlow" cx="50%" cy="50%" r="55%">
+            <stop offset="0%" stopColor="#E87A3E" stopOpacity="0.28" />
+            <stop offset="45%" stopColor="#235347" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#051F20" stopOpacity="0.95" />
+          </radialGradient>
+          <pattern id="seismicGrid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path
+              d="M 32 0 L 0 0 0 32"
+              fill="none"
+              stroke="#8EB69B"
+              strokeWidth="0.6"
+              strokeOpacity="0.14"
+            />
+          </pattern>
+        </defs>
+        <rect width="640" height="360" fill="#051F20" />
+        <rect width="640" height="360" fill="url(#seismicGrid)" />
+        <rect width="640" height="360" fill="url(#seismicGlow)" />
+        {/* Stylized Archipelago & Isoseismal Contours */}
+        <path
+          d="M90 190 Q 155 215, 220 225 T 355 232 T 490 205 T 570 175"
+          fill="none"
+          stroke="#8EB69B"
+          strokeWidth="1.5"
+          strokeOpacity="0.35"
+          strokeDasharray="6 4"
+        />
+        <circle
+          cx="320"
+          cy="170"
+          r="125"
+          fill="none"
+          stroke="#8EB69B"
+          strokeWidth="1"
+          strokeOpacity="0.25"
+          strokeDasharray="4 4"
+        />
+        <circle
+          cx="320"
+          cy="170"
+          r="86"
+          fill="none"
+          stroke="#E8B84B"
+          strokeWidth="1.2"
+          strokeOpacity="0.4"
+        />
+        <circle
+          cx="320"
+          cy="170"
+          r="48"
+          fill="rgba(232, 122, 62, 0.12)"
+          stroke="#E87A3E"
+          strokeWidth="1.6"
+          strokeOpacity="0.75"
+        />
+        <circle cx="320" cy="170" r="8" fill="#E87A3E" />
+        <circle cx="320" cy="170" r="16" fill="none" stroke="#DAF1DE" strokeWidth="1.2" opacity="0.6" />
+      </svg>
+      <div className="viewer__fallback-content">
+        <span className="viewer__fallback-badge">Visualisasi Telemetri BMKG</span>
+        <strong>{label}</strong>
+        {caption ? <span>{caption}</span> : null}
+      </div>
+    </div>
+  );
+}
+
 export function MediaViewerSection({
   items,
   title = "Peta & analisis BMKG",
@@ -39,27 +150,46 @@ export function MediaViewerSection({
   title?: string;
   onOpenLightbox: (validItems: MediaItem[], index: number) => void;
 }) {
-  const valid = items.filter((i): i is MediaItem => Boolean(i.src));
+  const valid: MediaItem[] = items
+    .map((i) => {
+      const resolved = resolveMediaUrl(i.src);
+      return resolved ? { label: i.label, caption: i.caption, src: resolved } : null;
+    })
+    .filter((i): i is MediaItem => Boolean(i));
+
   const [activeIdx, setActiveIdx] = useState(0);
+  const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
 
   if (!valid.length) return null;
-  const current = valid[Math.min(activeIdx, valid.length - 1)];
+  const safeIdx = Math.min(activeIdx, valid.length - 1);
+  const current = valid[safeIdx];
+  const isCurrentFailed = Boolean(failedMap[current.src]);
 
   return (
-    <section>
+    <section className="viewer-section">
       <h3>{title}</h3>
       <div className="viewer">
         <button
           className="viewer__stage"
           type="button"
-          onClick={() => onOpenLightbox(valid, Math.min(activeIdx, valid.length - 1))}
+          onClick={() => onOpenLightbox(valid, safeIdx)}
           aria-label={`Perbesar ${current.label}`}
         >
-          <img
-            src={current.src}
-            alt={current.caption || current.label}
-            referrerPolicy="no-referrer"
-          />
+          {isCurrentFailed ? (
+            <SeismicMediaFallback label={current.label} caption={current.caption} />
+          ) : (
+            <img
+              src={current.src}
+              alt={current.caption || current.label}
+              referrerPolicy="no-referrer"
+              onError={() =>
+                setFailedMap((prev) => ({
+                  ...prev,
+                  [current.src]: true,
+                }))
+              }
+            />
+          )}
           <span className="viewer__hint">
             <RoneIcon name="expand" />
             Perbesar
@@ -68,19 +198,39 @@ export function MediaViewerSection({
         <p className="viewer__meta">{current.caption}</p>
         {valid.length > 1 ? (
           <div className="viewer__tabs" role="tablist" aria-label={title}>
-            {valid.map((item, idx) => (
-              <button
-                key={item.label}
-                className="viewer__tab"
-                type="button"
-                role="tab"
-                aria-selected={idx === activeIdx ? "true" : "false"}
-                onClick={() => setActiveIdx(idx)}
-              >
-                <img src={item.src} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                <span>{item.label}</span>
-              </button>
-            ))}
+            {valid.map((item, idx) => {
+              const isTabFailed = Boolean(failedMap[item.src]);
+              return (
+                <button
+                  key={item.label}
+                  className="viewer__tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={idx === safeIdx ? "true" : "false"}
+                  onClick={() => setActiveIdx(idx)}
+                >
+                  {isTabFailed ? (
+                    <SeismicMediaFallback label={item.label} compact />
+                  ) : (
+                    <img
+                      src={item.src}
+                      alt=""
+                      loading="lazy"
+                      width={36}
+                      height={36}
+                      referrerPolicy="no-referrer"
+                      onError={() =>
+                        setFailedMap((prev) => ({
+                          ...prev,
+                          [item.src]: true,
+                        }))
+                      }
+                    />
+                  )}
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         ) : null}
       </div>
@@ -493,6 +643,7 @@ export function RoneLightbox({
 }) {
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (state) {
@@ -504,6 +655,7 @@ export function RoneLightbox({
   if (!state || !state.items.length) return null;
   const current = state.items[idx] || state.items[0];
   const multi = state.items.length > 1;
+  const isCurrentFailed = Boolean(failedMap[current.src]);
 
   return (
     <div
@@ -557,12 +709,22 @@ export function RoneLightbox({
         className="lightbox__stage"
         onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
       >
-        <img
-          src={current.src}
-          alt={current.caption || current.label}
-          style={{ transform: `scale(${zoom})` }}
-          referrerPolicy="no-referrer"
-        />
+        {isCurrentFailed ? (
+          <SeismicMediaFallback label={current.label} caption={current.caption} />
+        ) : (
+          <img
+            src={current.src}
+            alt={current.caption || current.label}
+            style={{ transform: `scale(${zoom})` }}
+            referrerPolicy="no-referrer"
+            onError={() =>
+              setFailedMap((prev) => ({
+                ...prev,
+                [current.src]: true,
+              }))
+            }
+          />
+        )}
         {multi ? (
           <>
             <button

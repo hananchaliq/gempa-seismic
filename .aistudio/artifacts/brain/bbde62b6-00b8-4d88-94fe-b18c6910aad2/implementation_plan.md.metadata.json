@@ -1,0 +1,6 @@
+{
+  "summary":  "Implementation plan for redesigning Gempa Seismic to match the Monochrome Alabaster & Obsidian aesthetic of image_add297cc.png, featuring a single left sidebar navigation, full-width structured detection tables across Realtime/Dirasakan/M5+/Merusak, and standardized Magnitude (M / Magnitudo) units instead of qualitative Minor/Mikro labels.",
+  "updatedAt":  "2026-10-27T22:39:50.685947006Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}

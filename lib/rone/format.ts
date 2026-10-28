@@ -175,6 +175,10 @@ export function fmtMag(m: number | null | undefined): string {
   return m == null ? "–" : num1.format(m);
 }
 
+export function fmtMagUnit(m: number | null | undefined): string {
+  return m == null ? "–" : `M ${num1.format(m)}`;
+}
+
 export function fmtDepth(km: number | null | undefined): string {
   return km == null ? "–" : `${numInt.format(Math.round(km))} km`;
 }
@@ -238,22 +242,27 @@ export function magBucket(m: number): "0" | "3" | "4" | "5" | "6" | "7" {
 }
 
 export function magCategory(m: number): string {
-  if (m >= 7) return "Besar";
-  if (m >= 6) return "Kuat";
-  if (m >= 5) return "Sedang";
-  if (m >= 4) return "Ringan";
-  if (m >= 3) return "Minor";
-  return "Mikro";
+  if (!Number.isFinite(m)) return "Magnitudo";
+  return "Magnitudo";
+}
+
+export function magScaleRange(m: number): string {
+  if (m >= 7) return "M ≥ 7,0";
+  if (m >= 6) return "M 6,0–6,9";
+  if (m >= 5) return "M 5,0–5,9";
+  if (m >= 4) return "M 4,0–4,9";
+  if (m >= 3) return "M 3,0–3,9";
+  return "M < 3,0";
 }
 
 export function magColorHex(m: number, isDark = false): string {
   const b = magBucket(m);
-  if (b === "7") return isDark ? "#8e1d35" : "#6e1426";
-  if (b === "6") return "#b3202f";
-  if (b === "5") return "#d0461a";
-  if (b === "4") return "#f08c1a";
-  if (b === "3") return "#e8b10c";
-  return isDark ? "#8a8174" : "#a39a8c";
+  if (b === "7") return isDark ? "#F43F5E" : "#9F1239";
+  if (b === "6") return "#DC2626";
+  if (b === "5") return "#EA580C";
+  if (b === "4") return "#D97706";
+  if (b === "3") return isDark ? "#EAB308" : "#CA8A04";
+  return isDark ? "#71717A" : "#52525B";
 }
 
 const MMI_RE = /^([IVXL]+(?:\s*-\s*[IVXL]+)?)\s+(.+)$/i;
