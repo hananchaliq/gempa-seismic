@@ -34,6 +34,7 @@ export interface RoneRealtimeEvent {
   longitude: number;
   region: string;
   status: string;
+  phase_count?: number;
   has_focal_mechanism: boolean;
 }
 
