@@ -18,6 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'Gempa Seismic — Pemantauan Gempa Bumi Real-Time Indonesia',
+  icons : {
+    icon: '/assets/favicon.png',
+  },
   description:
     'Deteksi sensor seismograf real-time, peta guncangan BMKG InaTEWS, analisis kedalaman hiposenter, dan kalkulasi jarak gelombang.',
   openGraph: {
