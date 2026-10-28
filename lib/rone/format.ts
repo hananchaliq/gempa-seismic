@@ -255,14 +255,41 @@ export function magScaleRange(m: number): string {
   return "M < 3,0";
 }
 
+export interface MagTierInfo {
+  bucket: "0" | "3" | "4" | "5" | "6" | "7";
+  shortTag: string;
+  levelLabel: "Rendah" | "Ringan" | "Menengah" | "Tinggi" | "Kuat" | "Ekstrem";
+  isHigh: boolean;
+}
+
+export function magTierInfo(m: number): MagTierInfo {
+  const bucket = magBucket(m);
+  if (bucket === "7") {
+    return { bucket, shortTag: "M 7+", levelLabel: "Ekstrem", isHigh: true };
+  }
+  if (bucket === "6") {
+    return { bucket, shortTag: "M 6", levelLabel: "Kuat", isHigh: true };
+  }
+  if (bucket === "5") {
+    return { bucket, shortTag: "M 5", levelLabel: "Tinggi", isHigh: true };
+  }
+  if (bucket === "4") {
+    return { bucket, shortTag: "M 4", levelLabel: "Menengah", isHigh: false };
+  }
+  if (bucket === "3") {
+    return { bucket, shortTag: "M 3", levelLabel: "Ringan", isHigh: false };
+  }
+  return { bucket: "0", shortTag: "M <3", levelLabel: "Rendah", isHigh: false };
+}
+
 export function magColorHex(m: number, isDark = false): string {
   const b = magBucket(m);
-  if (b === "7") return isDark ? "#F43F5E" : "#9F1239";
-  if (b === "6") return "#DC2626";
-  if (b === "5") return "#EA580C";
-  if (b === "4") return "#D97706";
-  if (b === "3") return isDark ? "#EAB308" : "#CA8A04";
-  return isDark ? "#71717A" : "#52525B";
+  if (b === "7") return "#F43F5E";
+  if (b === "6") return "#EF4444";
+  if (b === "5") return "#F97316";
+  if (b === "4") return "#F59E0B";
+  if (b === "3") return "#14B8A6";
+  return isDark ? "#94A3B8" : "#64748B";
 }
 
 const MMI_RE = /^([IVXL]+(?:\s*-\s*[IVXL]+)?)\s+(.+)$/i;

@@ -8,7 +8,9 @@ import {
   fmtMagUnit,
   magBucket,
   magCategory,
+  magColorHex,
   magScaleRange,
+  magTierInfo,
   parseFelt,
   weeklyBuckets,
 } from "./format";
@@ -25,13 +27,24 @@ test("magnitude formatting uses explicit M prefix and Magnitudo unit instead of 
   assert.equal(magScaleRange(5.2), "M 5,0–5,9");
 });
 
-test("magBucket classifies magnitudes into expected telemetry tiers", () => {
+test("magBucket, magTierInfo, and magColorHex classify magnitudes into 6 distinct color tiers", () => {
   assert.equal(magBucket(2.2), "0");
   assert.equal(magBucket(3.0), "3");
   assert.equal(magBucket(4.4), "4");
   assert.equal(magBucket(5.1), "5");
   assert.equal(magBucket(6.3), "6");
   assert.equal(magBucket(7.2), "7");
+
+  assert.equal(magColorHex(3.4), "#14B8A6");
+  assert.equal(magColorHex(4.2), "#F59E0B");
+  assert.equal(magColorHex(5.9), "#F97316");
+  assert.equal(magColorHex(6.5), "#EF4444");
+  assert.equal(magColorHex(7.1), "#F43F5E");
+
+  assert.equal(magTierInfo(3.2).isHigh, false);
+  assert.equal(magTierInfo(5.9).isHigh, true);
+  assert.equal(magTierInfo(5.9).levelLabel, "Tinggi");
+  assert.equal(magTierInfo(6.4).levelLabel, "Kuat");
 });
 
 test("coordinate, depth, and MMI felt parsing work accurately", () => {

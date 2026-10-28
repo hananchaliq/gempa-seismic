@@ -27,8 +27,8 @@ const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
   [-11.5, 94.5],
   [6.5, 141.5],
 ];
-const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-const ESRI = "Tiles &copy; Esri — Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
+const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
+const ESRI = "&copy; Esri, OSM";
 const ESRI_ROOT = "https://server.arcgisonline.com/ArcGIS/rest/services";
 
 const canvasUrl = (dark: boolean, kind: "Base" | "Reference") =>

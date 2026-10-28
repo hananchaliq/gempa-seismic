@@ -202,7 +202,7 @@ export function EpicenterDistanceBar({
     >
       <div className="seismic-calc__top">
         <div className="seismic-calc__title">
-          <span className="seismic-calc__kicker">Kalkulasi Jarak &amp; Gelombang</span>
+          <span className="seismic-calc__kicker">Jarak &amp; Waktu Tiba Gelombang</span>
           <span className="seismic-calc__feel">{metrics.feelEstimate}</span>
         </div>
         <div className="seismic-calc__controls">
@@ -235,7 +235,7 @@ export function EpicenterDistanceBar({
             disabled={gpsLoading}
             title="Hitung jarak dari koordinat GPS perangkat Anda"
           >
-            {gpsLoading ? "Mencari…" : "GPS"}
+            {gpsLoading ? "…" : "GPS"}
           </button>
         </div>
       </div>
@@ -248,19 +248,13 @@ export function EpicenterDistanceBar({
           </strong>
         </div>
         <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Jarak Hiposenter</span>
-          <strong className="seismic-calc__val mono">
-            {fmtNumber(metrics.hypoKm)} <small>km</small>
-          </strong>
-        </div>
-        <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Tiba P / S</span>
+          <span className="seismic-calc__label">Tiba Gelombang P / S</span>
           <strong className="seismic-calc__val mono">
             {`${formatCompactSec(metrics.pWaveSec)} / ${formatCompactSec(metrics.sWaveSec)}`}
           </strong>
         </div>
         <div className="seismic-calc__cell">
-          <span className="seismic-calc__label">Jeda S–P (Δt)</span>
+          <span className="seismic-calc__label">Selisih S–P (Δt)</span>
           <strong className="seismic-calc__val mono">
             {`+${formatCompactSec(metrics.deltaPS)}`}
           </strong>
@@ -271,9 +265,8 @@ export function EpicenterDistanceBar({
 }
 
 /**
- * Reference Image Top-Left Motif: Horizontal Staggered Monochrome Capsule Timeline
- * Shows the 5 most recent detections as staggered Obsidian / Charcoal / Alabaster capsules
- * along a time axis with magnitude badges on the right end of each capsule.
+ * Reference Image Top-Left Motif: Horizontal Staggered Capsule Timeline
+ * Uses 5 clean, breathable capsules with solid full-color category magnitude badges.
  */
 export function SeismicCapsuleTimeline({
   events,
@@ -284,10 +277,10 @@ export function SeismicCapsuleTimeline({
   activeId?: string;
   onSelect: (ev: RoneRealtimeEvent) => void;
 }) {
-  const items = events.slice(0, 6);
+  const items = events.slice(0, 5);
   if (!items.length) return null;
 
-  const offsets = [6, 18, 26, 10, 22, 8];
+  const offsets = [4, 16, 24, 8, 18];
 
   return (
     <div className="capsule-timeline" aria-label="Kronologi deteksi terbaru">
@@ -295,51 +288,61 @@ export function SeismicCapsuleTimeline({
         {items.map((ev, idx) => {
           const timeLabel = fmtClockWib(new Date(ev.origin_time)).replace(".", ":");
           const isSelected = ev.event_id === activeId;
-          const tone =
-            ev.magnitude >= 4.5
-              ? "obsidian"
-              : ev.magnitude >= 3.2
-                ? "charcoal"
-                : idx === 4 || idx === 5
-                  ? "ivory"
-                  : "obsidian";
+          const bucket = magBucket(ev.magnitude);
+          const isHigh = ev.magnitude >= 5.0;
+          const tone = isHigh
+            ? "obsidian"
+            : ev.magnitude >= 3.5
+              ? "charcoal"
+              : idx === 3 || idx === 4
+                ? "ivory"
+                : "obsidian";
           const offsetLeft = offsets[idx % offsets.length];
 
           return (
-            <div key={ev.event_id} className="capsule-timeline__row">
+            <motion.div
+              key={ev.event_id}
+              className="capsule-timeline__row"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.28, delay: idx * 0.045 }}
+            >
               <span className="capsule-timeline__time mono">{timeLabel}</span>
               <div className="capsule-timeline__track">
                 <button
                   type="button"
                   className={`capsule-bar capsule-bar--${tone}${
                     isSelected ? " is-selected" : ""
-                  }`}
+                  }${isHigh ? " is-high-mag" : ""}`}
                   style={{ marginLeft: `${offsetLeft}%` }}
                   onClick={() => onSelect(ev)}
-                  title={`Magnitudo M ${fmtMag(ev.magnitude)} · ${ev.region} (${fmtDepth(
+                  title={`M ${fmtMag(ev.magnitude)} · ${ev.region} (${fmtDepth(
                     ev.depth_km
                   )})`}
                 >
                   <span className="capsule-bar__label">{ev.region}</span>
-                  <span className="capsule-bar__badge mono">
-                    M {fmtMag(ev.magnitude)}
+                  <span
+                    className="mag mag--sm capsule-bar__mag"
+                    data-m={bucket}
+                  >
+                    <span className="mag__num">M {fmtMag(ev.magnitude)}</span>
                   </span>
                 </button>
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
 
       <div className="capsule-timeline__legend">
         <span>
-          <i className="dot dot--obsidian" /> Magnitudo ≥ M 4,5
+          <i className="dot" style={{ background: "var(--m-5)" }} /> M 5,0+ Tinggi
         </span>
         <span>
-          <i className="dot dot--charcoal" /> Magnitudo M 3,0–4,4
+          <i className="dot" style={{ background: "var(--m-4)" }} /> M 4,0–4,9
         </span>
         <span>
-          <i className="dot dot--ivory" /> Magnitudo &lt; M 3,0
+          <i className="dot" style={{ background: "var(--m-3)" }} /> M &lt; 4,0
         </span>
       </div>
     </div>
@@ -347,9 +350,9 @@ export function SeismicCapsuleTimeline({
 }
 
 /**
- * Reference Image Top-Center Motif ("Projets en cours / 74,3%")
- * Shows active/peak Magnitude with explicit "Magnitudo" unit label, smooth dual bezier wave curve,
- * and 3 bulleted depth-tier distribution rows at the bottom.
+ * Reference Image Top-Center Motif ("Kurva Magnitudo")
+ * Categorizes frequency by Magnitude tiers (distinguishing high M 5,0+ events)
+ * and colors spline nodes using the 6-tier Magnitude palette.
  */
 export function SeismicMagnitudeSplineCard({
   events,
@@ -368,43 +371,38 @@ export function SeismicMagnitudeSplineCard({
     return events.slice(0, windowSize).reverse();
   }, [events, windowSize]);
 
-  const depthBreakdown = useMemo(() => {
+  const magCategoryBreakdown = useMemo(() => {
     const total = Math.max(1, events.length);
-    const shallow = events.filter((e) => e.depth_km < 60);
-    const inter = events.filter((e) => e.depth_km >= 60 && e.depth_km <= 300);
-    const deep = events.filter((e) => e.depth_km > 300);
-
-    const avgM = (arr: RoneRealtimeEvent[]) =>
-      arr.length
-        ? arr.reduce((s, x) => s + x.magnitude, 0) / arr.length
-        : 0;
+    const highList = events.filter((e) => e.magnitude >= 5.0);
+    const midList = events.filter((e) => e.magnitude >= 4.0 && e.magnitude < 5.0);
+    const lowList = events.filter((e) => e.magnitude < 4.0);
 
     return [
       {
-        label: "Dangkal (<60 km)",
-        pct: Math.round((shallow.length / total) * 100),
-        avg: avgM(shallow),
-        count: shallow.length,
-        tone: "obsidian",
+        key: "high",
+        label: "Tinggi (M 5,0+)",
+        bucket: "5" as const,
+        count: highList.length,
+        pct: Math.round((highList.length / total) * 100),
       },
       {
-        label: "Menengah (60–300 km)",
-        pct: Math.round((inter.length / total) * 100),
-        avg: avgM(inter),
-        count: inter.length,
-        tone: "charcoal",
+        key: "mid",
+        label: "Menengah (M 4,0–4,9)",
+        bucket: "4" as const,
+        count: midList.length,
+        pct: Math.round((midList.length / total) * 100),
       },
       {
-        label: "Dalam (>300 km)",
+        key: "low",
+        label: "Ringan (M < 4,0)",
+        bucket: "3" as const,
+        count: lowList.length,
         pct: Math.max(
           0,
           100 -
-            Math.round((shallow.length / total) * 100) -
-            Math.round((inter.length / total) * 100)
+            Math.round((highList.length / total) * 100) -
+            Math.round((midList.length / total) * 100)
         ),
-        avg: avgM(deep),
-        count: deep.length,
-        tone: "silver",
       },
     ];
   }, [events]);
@@ -413,15 +411,15 @@ export function SeismicMagnitudeSplineCard({
 
   const width = 340;
   const height = 118;
-  const padL = 8;
-  const padR = 8;
+  const padL = 10;
+  const padR = 10;
   const padT = 18;
   const padB = 14;
   const plotW = width - padL - padR;
   const plotH = height - padT - padB;
 
   const minMag = 1.5;
-  const maxMag = Math.max(6.0, ...series.map((e) => e.magnitude + 0.4));
+  const maxMag = Math.max(6.2, ...series.map((e) => e.magnitude + 0.4));
 
   const points = series.map((ev, idx) => {
     const x = Number(
@@ -431,10 +429,9 @@ export function SeismicMagnitudeSplineCard({
     const y = Number((padT + (1 - ratio) * plotH).toFixed(1));
     const depthRatio = Math.max(0, Math.min(1, ev.depth_km / 220));
     const y2 = Number((padT + (0.25 + depthRatio * 0.65) * plotH).toFixed(1));
-    return { x, y, y2, ev };
+    return { x, y, y2, ev, bucket: magBucket(ev.magnitude) };
   });
 
-  // Build smooth cubic bezier path
   const buildSmoothPath = (pts: Array<{ x: number; y: number }>) => {
     if (pts.length === 0) return "";
     if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
@@ -470,9 +467,7 @@ export function SeismicMagnitudeSplineCard({
       className="spline-widget"
     >
       <div className="spline-widget__head">
-        <div>
-          <span className="spline-widget__eyebrow">Kurva Magnitudo</span>
-        </div>
+        <span className="spline-widget__eyebrow">Frekuensi Magnitudo</span>
         <div
           className="spline-widget__tabs"
           role="group"
@@ -492,11 +487,27 @@ export function SeismicMagnitudeSplineCard({
       </div>
 
       <div className="spline-widget__hero-val">
-        <strong className="spline-widget__big mono">
-          M {fmtMag(activePt.ev.magnitude)}
-        </strong>
+        <div className="spline-widget__hero-row">
+          <strong className="spline-widget__big mono">
+            M {fmtMag(activePt.ev.magnitude)}
+          </strong>
+          <span
+            className="mag mag--sm"
+            data-m={activePt.bucket}
+          >
+            <span className="mag__num">
+              {activePt.ev.magnitude >= 6
+                ? "Kuat"
+                : activePt.ev.magnitude >= 5
+                  ? "Tinggi"
+                  : activePt.ev.magnitude >= 4
+                    ? "Menengah"
+                    : "Ringan"}
+            </span>
+          </span>
+        </div>
         <span className="spline-widget__sub">
-          Magnitudo · rerata sampel M {fmtMag(avgMag)}
+          Rerata sampel M {fmtMag(avgMag)}
         </span>
       </div>
 
@@ -510,61 +521,74 @@ export function SeismicMagnitudeSplineCard({
           d={secondaryWave}
           fill="none"
           stroke="var(--ink-3)"
-          strokeOpacity="0.45"
-          strokeWidth="1.6"
+          strokeOpacity="0.35"
+          strokeWidth="1.5"
           strokeLinecap="round"
         />
-        <path
+        <motion.path
           d={primaryWave}
           fill="none"
           stroke="var(--ink)"
           strokeWidth="2.4"
           strokeLinecap="round"
+          initial={{ pathLength: 0.25, opacity: 0.5 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 0.65, ease: "easeOut" }}
         />
 
         {points.map((pt) => {
           const isCurrent = pt.ev.event_id === activePt.ev.event_id;
+          const isHigh = pt.ev.magnitude >= 5.0;
           return (
             <g
               key={pt.ev.event_id}
               onClick={() => onSelectQuake(pt.ev)}
               style={{ cursor: "pointer" }}
             >
-              <title>{`Magnitudo M ${fmtMag(pt.ev.magnitude)} · ${pt.ev.region} (${fmtDepth(
+              <title>{`M ${fmtMag(pt.ev.magnitude)} · ${pt.ev.region} (${fmtDepth(
                 pt.ev.depth_km
               )})`}</title>
-              {isCurrent ? (
+              {isCurrent || isHigh ? (
                 <circle
                   cx={pt.x}
                   cy={pt.y}
-                  r="8"
-                  fill="var(--ink)"
-                  fillOpacity="0.14"
+                  r={isCurrent ? "9" : "7"}
+                  fill={`var(--m-${pt.bucket})`}
+                  fillOpacity="0.24"
+                  className="spline-pulse-ring"
                 />
               ) : null}
               <circle
                 cx={pt.x}
                 cy={pt.y}
-                r={isCurrent ? "4.5" : "2.4"}
-                fill={isCurrent ? "var(--ink)" : "var(--bg-card)"}
-                stroke="var(--ink)"
-                strokeWidth="1.6"
+                r={isCurrent ? "5" : isHigh ? "4" : "2.8"}
+                fill={`var(--m-${pt.bucket})`}
+                stroke="var(--bg-card)"
+                strokeWidth="1.5"
               />
             </g>
           );
         })}
       </svg>
 
-      <ul className="spline-widget__breakdown" aria-label="Distribusi zona kedalaman">
-        {depthBreakdown.map((item) => (
-          <li key={item.label} className="spline-widget__row">
+      <ul className="spline-widget__breakdown" aria-label="Kategori frekuensi magnitudo">
+        {magCategoryBreakdown.map((item) => (
+          <li key={item.key} className="spline-widget__row">
             <span className="spline-widget__row-label">
-              <i className={`dot dot--${item.tone}`} />
+              <i
+                className="dot"
+                style={{ background: `var(--m-${item.bucket})` }}
+              />
               {item.label}
             </span>
-            <strong className="spline-widget__row-val mono">
-              {item.pct}% · {item.avg > 0 ? `M ${fmtMag(item.avg)}` : "–"}
-            </strong>
+            <span
+              className="mag mag--sm"
+              data-m={item.bucket}
+            >
+              <span className="mag__num">
+                {item.count} ({item.pct}%)
+              </span>
+            </span>
           </li>
         ))}
       </ul>
@@ -573,7 +597,8 @@ export function SeismicMagnitudeSplineCard({
 }
 
 /**
- * Priority Quakes Spotlight inside the Obsidian Right Column Card ("Aperçu du fichier" motif)
+ * Priority Quakes Spotlight inside the Obsidian Right Column Card
+ * Clean, uncluttered cards with solid full-color magnitude category badges.
  */
 export function StackedQuickQuakesDeck({
   realtimeTop,
@@ -601,11 +626,10 @@ export function StackedQuickQuakesDeck({
       ? {
           id: `rt-${realtimeTop.event_id}`,
           eventId: realtimeTop.event_id,
-          badge: "SENSOR REALTIME",
+          badge: "REALTIME",
           title: realtimeTop.region,
           mag: realtimeTop.magnitude,
           depth: realtimeTop.depth_km,
-          time: realtimeTop.origin_time,
           onClick: () => onPickRealtime(realtimeTop),
         }
       : null,
@@ -613,11 +637,10 @@ export function StackedQuickQuakesDeck({
       ? {
           id: `felt-${feltTop.event_id}`,
           eventId: feltTop.event_id,
-          badge: "DIRASAKAN (MMI)",
+          badge: "DIRASAKAN",
           title: feltTop.region,
           mag: feltTop.magnitude,
           depth: feltTop.depth_km,
-          time: feltTop.origin_time,
           onClick: () => onPickFelt(feltTop),
         }
       : null,
@@ -629,7 +652,6 @@ export function StackedQuickQuakesDeck({
           title: significantTop.region,
           mag: significantTop.magnitude,
           depth: significantTop.depth_km,
-          time: significantTop.origin_time,
           onClick: () => onPickSignificant(significantTop),
         }
       : null,
@@ -640,7 +662,6 @@ export function StackedQuickQuakesDeck({
     title: string;
     mag: number;
     depth: number;
-    time: string;
     onClick: () => void;
   }>;
 
@@ -656,13 +677,14 @@ export function StackedQuickQuakesDeck({
       aria-label="Kartu pantauan cepat gempa utama"
     >
       <div className="quake-deck__head">
-        <span className="quake-deck__title">Kanal Prioritas BMKG</span>
-        <span className="quake-deck__pill">3 Kanal Aktif</span>
+        <span className="quake-deck__title">Kanal Prioritas</span>
+        <span className="quake-deck__pill">Live BMKG</span>
       </div>
 
       <div className="quake-deck__stack">
         {cards.map((c, idx) => {
           const isCurrent = c.eventId === activeId || (idx === 0 && !activeId);
+          const bucket = magBucket(c.mag);
           return (
             <button
               key={c.id}
@@ -672,21 +694,16 @@ export function StackedQuickQuakesDeck({
               }`}
               onClick={c.onClick}
             >
-              <div className="quake-deck__row1">
-                <span className="quake-deck__badge">{c.badge}</span>
-                <span className="quake-deck__depth mono">{fmtDepth(c.depth)}</span>
-              </div>
               <div className="quake-deck__row2">
                 <div className="quake-deck__info">
-                  <span className="quake-deck__region">{c.title}</span>
-                  <span className="quake-deck__time">{fmtDateTime(c.time)}</span>
-                </div>
-                <div className="quake-deck__mag-wrap">
-                  <span className="quake-deck__mag mono">M {fmtMag(c.mag)}</span>
-                  <span className="quake-deck__chip">
-                    Magnitudo · {depthCategoryLabel(c.depth).tier}
+                  <span className="quake-deck__badge">
+                    {c.badge} · {fmtDepth(c.depth)}
                   </span>
+                  <span className="quake-deck__region">{c.title}</span>
                 </div>
+                <span className="mag" data-m={bucket}>
+                  <span className="mag__num">M {fmtMag(c.mag)}</span>
+                </span>
               </div>
             </button>
           );
@@ -706,7 +723,7 @@ export function StackedQuickQuakesDeck({
           className="quake-deck__btn quake-deck__btn--primary"
           onClick={onOpenDetail}
         >
-          ↗ Inspeksi Detail
+          ↗ Detail Gempa
         </button>
       </div>
     </motion.div>
@@ -762,6 +779,7 @@ export function HypocenterDepthCrossSection({
   const hypoLabelY = Number(
     (targetY < 58 ? targetY + 18 : targetY + 4).toFixed(1)
   );
+  const targetBucket = magBucket(target.magnitude);
 
   return (
     <motion.section
@@ -774,11 +792,9 @@ export function HypocenterDepthCrossSection({
     >
       <div className="card__head">
         <div>
-          <h2 id="depth-cross-heading">Penampang Kedalaman Hiposenter &amp; Subduksi</h2>
+          <h2 id="depth-cross-heading">Penampang Kedalaman Hiposenter</h2>
           <p className="hint">
-            {`Proyeksi vertikal Episenter (0 km) ke Hiposenter (${fmtDepth(
-              target.depth_km
-            )}) sepanjang busur tektonik Indonesia`}
+            Proyeksi Episenter (0 km) ke Hiposenter ({fmtDepth(target.depth_km)})
           </p>
         </div>
         <span className="pill">{`${depthInfo.tier} · ${fmtDepth(target.depth_km)}`}</span>
@@ -892,7 +908,7 @@ export function HypocenterDepthCrossSection({
             textAnchor="end"
             className="depth-svg__zone"
           >
-            {"Kerak Dangkal (<60 km)"}
+            {"Dangkal (<60 km)"}
           </text>
           {maxDepthScale > 90 ? (
             <text
@@ -901,12 +917,7 @@ export function HypocenterDepthCrossSection({
               textAnchor="end"
               className="depth-svg__zone"
             >
-              {"Subduksi Menengah (60–300 km)"}
-            </text>
-          ) : null}
-          {maxDepthScale > 320 ? (
-            <text x="574" y="196" textAnchor="end" className="depth-svg__zone">
-              {"Mantel Dalam (>300 km)"}
+              {"Menengah (60–300 km)"}
             </text>
           ) : null}
 
@@ -915,7 +926,7 @@ export function HypocenterDepthCrossSection({
             const cy = depthToY(pt.depth_km);
             const isSelected = pt.event_id === target.event_id;
             const r = Number(
-              Math.max(3.5, Math.min(9.5, (pt.magnitude - 1.5) * 2.1)).toFixed(1)
+              Math.max(3.8, Math.min(9.5, (pt.magnitude - 1.5) * 2.1)).toFixed(1)
             );
             const bucket = magBucket(pt.magnitude);
             return (
@@ -925,7 +936,7 @@ export function HypocenterDepthCrossSection({
                 onClick={() => onSelectQuake(pt)}
                 style={{ cursor: "pointer" }}
               >
-                <title>{`Magnitudo M ${fmtMag(pt.magnitude)} · ${pt.region} · Kedalaman ${fmtDepth(
+                <title>{`M ${fmtMag(pt.magnitude)} · ${pt.region} · ${fmtDepth(
                   pt.depth_km
                 )}`}</title>
                 <circle
@@ -933,7 +944,7 @@ export function HypocenterDepthCrossSection({
                   cy={cy}
                   r={isSelected ? Number((r + 3).toFixed(1)) : r}
                   fill={`var(--m-${bucket})`}
-                  fillOpacity={isSelected ? 0.95 : 0.65}
+                  fillOpacity={isSelected ? 1 : 0.8}
                   stroke="var(--clay)"
                   strokeWidth={isSelected ? "2" : "1"}
                 />
@@ -965,7 +976,7 @@ export function HypocenterDepthCrossSection({
             textAnchor="middle"
             className="depth-svg__callout"
           >
-            {"Episenter (0 km)"}
+            {"Episenter"}
           </text>
 
           <circle
@@ -973,16 +984,16 @@ export function HypocenterDepthCrossSection({
             cy={targetY}
             r="14"
             fill="none"
-            stroke="var(--ink)"
-            strokeWidth="1.2"
-            strokeOpacity="0.45"
+            stroke={`var(--m-${targetBucket})`}
+            strokeWidth="1.6"
+            strokeOpacity="0.65"
             className="depth-svg__wave"
           />
           <circle
             cx={targetX}
             cy={targetY}
             r="6.5"
-            fill="var(--ink)"
+            fill={`var(--m-${targetBucket})`}
             stroke="var(--clay)"
             strokeWidth="2"
           />
@@ -992,34 +1003,29 @@ export function HypocenterDepthCrossSection({
             textAnchor={targetX > 420 ? "end" : "start"}
             className="depth-svg__hypo mono"
           >
-            {`Hiposenter M ${fmtMag(target.magnitude)} (${fmtDepth(target.depth_km)})`}
+            {`M ${fmtMag(target.magnitude)} (${fmtDepth(target.depth_km)})`}
           </text>
         </svg>
       </div>
 
       <div className="depth-footer">
         <div className="depth-footer__active">
-          <span className="depth-footer__label">Fokus aktif:</span>
-          <strong>{`M ${fmtMag(target.magnitude)} · ${target.region}`}</strong>
+          <span className="mag mag--sm" data-m={targetBucket}>
+            <span className="mag__num">M {fmtMag(target.magnitude)}</span>
+          </span>
+          <strong>{target.region}</strong>
           <span className="muted xsmall">
-            {`(${fmtCoords(target.latitude, target.longitude)} · ${fmtRelative(
-              target.origin_time,
-              nowMs
-            )})`}
+            {fmtRelative(target.origin_time, nowMs)}
           </span>
           <button
             type="button"
             className="link-arrow xsmall"
+            style={{ marginLeft: "auto" }}
             onClick={() => onOpenDetail(target)}
           >
-            Buka detail →
+            Detail →
           </button>
         </div>
-        <p className="depth-footer__explain xsmall muted">
-          <strong>Episenter</strong> adalah titik proyeksi di permukaan bumi (0 km), sedangkan{" "}
-          <strong>Hiposenter</strong> adalah titik pusat patahan batuan di kedalaman (
-          {fmtDepth(target.depth_km)}). {depthInfo.desc}.
-        </p>
       </div>
     </motion.section>
   );

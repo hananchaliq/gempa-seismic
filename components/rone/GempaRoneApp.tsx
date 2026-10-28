@@ -15,7 +15,9 @@ import {
   fmtTime,
   fmtUtcDate,
   distanceKm,
+  magBucket,
   magScaleRange,
+  magTierInfo,
   parseFelt,
   RoneDamagingEvent,
   RoneEarthquake,
@@ -848,7 +850,8 @@ export function GempaRoneApp({
                     <RoneIcon name="calendar" />
                   </span>
                   <div className="topbar-widget__copy">
-                    <strong id="live-label">
+                    <strong id="live-label" className="live-label-row">
+                      <span className="live-pulse-dot" aria-hidden="true" />
                       {liveOk ? `Live · ${pollCountdown}d` : "Gangguan"}
                     </strong>
                     <span className="mono">{liveTimeLabel.replace("Diperbarui ", "")} WIB</span>
@@ -859,16 +862,20 @@ export function GempaRoneApp({
                   className="topbar-widget topbar-widget--peak"
                   title="Magnitudo terbesar dalam 24 jam terakhir"
                 >
-                  <span className="topbar-widget__sun" aria-hidden="true">
-                    <RoneIcon name="pulse" />
-                  </span>
+                  {summaryStats.strongest ? (
+                    <MagBadge magnitude={summaryStats.strongest.magnitude} size="sm" />
+                  ) : (
+                    <span className="topbar-widget__sun" aria-hidden="true">
+                      <RoneIcon name="pulse" />
+                    </span>
+                  )}
                   <div className="topbar-widget__copy">
-                    <strong className="mono">
+                    <strong>Terkuat 24j</strong>
+                    <span>
                       {summaryStats.strongest
-                        ? `M ${fmtMag(summaryStats.strongest.magnitude)}`
-                        : "M –"}
-                    </strong>
-                    <span>Magnitudo 24j</span>
+                        ? magTierInfo(summaryStats.strongest.magnitude).levelLabel
+                        : "Magnitudo"}
+                    </span>
                   </div>
                 </div>
 
@@ -1063,20 +1070,14 @@ export function GempaRoneApp({
                         {activeHeroQuake ? (
                           <>
                             {fmtDateTime(activeHeroQuake.origin_time)} ·{" "}
-                            <span>{fmtDepth(activeHeroQuake.depth_km)}</span> ·{" "}
-                            <span className="mono">
-                              {fmtCoords(
-                                activeHeroQuake.latitude,
-                                activeHeroQuake.longitude
-                              )}
-                            </span>
+                            <span>{fmtDepth(activeHeroQuake.depth_km)}</span>
                           </>
                         ) : null}
                       </p>
                     </div>
                   </div>
 
-                  {/* Layman-Friendly Quick Summary Strip (Prominent on Mobile & Tablet, Compact on Desktop) */}
+                  {/* Clean, Breathable Layman Summary Strip */}
                   {heroLaymanSummary && activeHeroQuake ? (
                     <div
                       className="layman-summary"
@@ -1133,27 +1134,21 @@ export function GempaRoneApp({
                           <strong className="layman-tile__val mono">
                             {fmtNumber(heroLaymanSummary.surfaceDist)} km
                           </strong>
-                          <span className="layman-tile__sub">
-                            {heroLaymanSummary.feelText}
-                          </span>
                         </div>
                         <div className="layman-tile">
                           <span className="layman-tile__label">Kedalaman</span>
                           <strong className="layman-tile__val mono">
-                            {fmtDepth(activeHeroQuake.depth_km)}
+                            {fmtDepth(activeHeroQuake.depth_km)} · {heroLaymanSummary.depthTier}
                           </strong>
-                          <span className="layman-tile__sub">
-                            Zona {heroLaymanSummary.depthTier}
-                          </span>
                         </div>
                         <div className="layman-tile">
-                          <span className="layman-tile__label">Skala Energi</span>
-                          <strong className="layman-tile__val mono">
-                            M {fmtMag(activeHeroQuake.magnitude)}
-                          </strong>
-                          <span className="layman-tile__sub">
-                            {magScaleRange(activeHeroQuake.magnitude)}
-                          </span>
+                          <span className="layman-tile__label">Kategori M</span>
+                          <div className="layman-tile__badge-row">
+                            <MagBadge magnitude={activeHeroQuake.magnitude} size="sm" />
+                            <span className="layman-tile__tier">
+                              {magTierInfo(activeHeroQuake.magnitude).levelLabel}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1329,7 +1324,9 @@ export function GempaRoneApp({
                   transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="files-card__head">
-                    <h2 id="recent-heading">Deteksi Terbaru</h2>
+                    <div>
+                      <h2 id="recent-heading">Deteksi Terbaru</h2>
+                    </div>
                     <button
                       type="button"
                       className="circle-btn circle-btn--obsidian"
@@ -1341,38 +1338,44 @@ export function GempaRoneApp({
                     </button>
                   </div>
 
-                  <ul className="file-pill-list" id="recent-list" aria-live="polite">
-                    {realtime.slice(0, 6).map((ev) => {
-                      const isCurrent = activeHeroQuake?.event_id === ev.event_id;
-                      return (
-                        <li key={`${ev.event_id}-${refreshCycle}`}>
-                          <button
-                            type="button"
-                            className={`file-pill-item${isCurrent ? " is-current" : ""}`}
-                            onClick={() => {
-                              setFocusedRealtime(ev);
-                              setHomeSelected(ev);
-                              setHeroMode("realtime");
-                              setDetailTarget({ kind: "realtime", data: ev });
-                            }}
-                          >
-                            <span className="file-pill-item__icon mono">
-                              M {fmtMag(ev.magnitude)}
-                            </span>
-                            <span className="file-pill-item__body">
-                              <strong>{ev.region}</strong>
-                              <span>
-                                {fmtDateTime(ev.origin_time)} · {fmtDepth(ev.depth_km)}
+                  <div className="recent-scroll-box">
+                    <ul className="file-pill-list" id="recent-list" aria-live="polite">
+                      {realtime.slice(0, 16).map((ev) => {
+                        const isCurrent = activeHeroQuake?.event_id === ev.event_id;
+                        const tier = magTierInfo(ev.magnitude);
+                        return (
+                          <li key={`${ev.event_id}-${refreshCycle}`}>
+                            <button
+                              type="button"
+                              className={`file-pill-item${isCurrent ? " is-current" : ""}`}
+                              onClick={() => {
+                                setFocusedRealtime(ev);
+                                setHomeSelected(ev);
+                                setHeroMode("realtime");
+                                setDetailTarget({ kind: "realtime", data: ev });
+                              }}
+                            >
+                              <MagBadge magnitude={ev.magnitude} />
+                              <span className="file-pill-item__body">
+                                <strong>{ev.region}</strong>
+                                <span>
+                                  {fmtDepth(ev.depth_km)} · {fmtRelative(ev.origin_time, nowMs)}
+                                </span>
                               </span>
-                            </span>
-                            <span className="file-pill-item__time">
-                              {fmtRelative(ev.origin_time, nowMs)}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                              {tier.isHigh ? (
+                                <span
+                                  className="high-mag-tag"
+                                  data-m={tier.bucket}
+                                >
+                                  {tier.levelLabel}
+                                </span>
+                              ) : null}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
                 </motion.section>
 
                 {/* MOBILE-ONLY ANALYTICS TOGGLE BAR: Keeps Mobile view ultra-simple for laymen while allowing 1-tap access to full charts */}
@@ -1468,19 +1471,12 @@ export function GempaRoneApp({
                     </svg>
                   </div>
 
-                  {/* Nested Obsidian Black 3-Column Telemetry Progress Card */}
+                  {/* Nested Obsidian Black 3-Column Telemetry Progress Card (Clean & Uncluttered) */}
                   <div className="obsidian-trio">
                     <div className="obsidian-trio__col">
                       <div className="obsidian-trio__head">
-                        <strong>Zona Kerak Dangkal</strong>
-                        <span>Kedalaman &lt; 60 km · Sesar Aktif</span>
-                      </div>
-                      <div className="obsidian-trio__chips">
-                        <span className="trio-badge">M &lt; 3,0</span>
-                        <span className="trio-badge">M 3,0–4,9</span>
-                        <span className="trio-badge trio-badge--light">
-                          {fmtNumber(summaryStats.shallowCount)} titik
-                        </span>
+                        <strong>Kerak Dangkal (&lt; 60 km)</strong>
+                        <span>{fmtNumber(summaryStats.shallowCount)} deteksi sesar aktif</span>
                       </div>
                       <div className="obsidian-trio__prog">
                         <div className="obsidian-trio__prog-label">
@@ -1507,23 +1503,12 @@ export function GempaRoneApp({
                           />
                         </div>
                       </div>
-                      <div className="obsidian-trio__foot mono">
-                        <span>✓ {fmtNumber(summaryStats.shallowCount)} deteksi</span>
-                        <span>◎ &lt; 60 km</span>
-                      </div>
                     </div>
 
                     <div className="obsidian-trio__col">
                       <div className="obsidian-trio__head">
-                        <strong>Zona Subduksi Litosfer</strong>
-                        <span>Kedalaman 60–300 km · Lempeng</span>
-                      </div>
-                      <div className="obsidian-trio__chips">
-                        <span className="trio-badge">Indo-Australia</span>
-                        <span className="trio-badge">Eurasia</span>
-                        <span className="trio-badge trio-badge--light">
-                          {fmtNumber(summaryStats.subductionCount)} titik
-                        </span>
+                        <strong>Subduksi (60–300 km)</strong>
+                        <span>{fmtNumber(summaryStats.subductionCount)} deteksi lempeng</span>
                       </div>
                       <div className="obsidian-trio__prog">
                         <div className="obsidian-trio__prog-label">
@@ -1552,23 +1537,12 @@ export function GempaRoneApp({
                           />
                         </div>
                       </div>
-                      <div className="obsidian-trio__foot mono">
-                        <span>✓ {fmtNumber(summaryStats.subductionCount)} deteksi</span>
-                        <span>◎ 60–300 km</span>
-                      </div>
                     </div>
 
                     <div className="obsidian-trio__col">
                       <div className="obsidian-trio__head">
-                        <strong>Verifikasi &amp; Katalog 3 Bulan</strong>
-                        <span>Status Sensor &amp; Tren M 4,5+</span>
-                      </div>
-                      <div className="obsidian-trio__chips">
-                        <span className="trio-badge">InaTEWS</span>
-                        <span className="trio-badge">M 4,5+</span>
-                        <span className="trio-badge trio-badge--light">
-                          {weeklyChartData ? `${fmtNumber(weeklyChartData.total)} kejadian` : "Aktif"}
-                        </span>
+                        <strong>Verifikasi InaTEWS</strong>
+                        <span>{fmtNumber(summaryStats.confirmedCount)} parameter terkonfirmasi</span>
                       </div>
                       <div className="obsidian-trio__prog">
                         <div className="obsidian-trio__prog-label">
@@ -1596,12 +1570,6 @@ export function GempaRoneApp({
                             }}
                           />
                         </div>
-                      </div>
-                      <div className="obsidian-trio__foot mono">
-                        <span>✓ {fmtNumber(summaryStats.confirmedCount)} confirmed</span>
-                        <span>
-                          ◎ Rerata {weeklyChartData ? fmtNumber(weeklyChartData.average) : "–"}/mgg
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -1748,18 +1716,11 @@ export function GempaRoneApp({
               <div className="page-stack">
                 <section className="card map-banner-card" aria-label="Peta deteksi realtime">
                   <div className="map-banner-card__head">
-                    <div>
-                      <h2>Peta Sebaran Sensor Realtime (200+ Titik Terbaru)</h2>
-                      <p className="hint">
-                        Klik titik episenter pada peta atau baris pada tabel terstruktur di bawah untuk membuka riwayat fase dan pemutakhiran parameter BMKG.
-                      </p>
-                    </div>
+                    <h2>Peta Sebaran Sensor Realtime</h2>
                     <div className="row">
                       <span className="pill">{fmtNumber(realtime.length)} deteksi aktif</span>
                       {realtime[0] ? (
-                        <span className="pill pill--obsidian mono">
-                          Terbaru: M {fmtMag(realtime[0].magnitude)}
-                        </span>
+                        <MagBadge magnitude={realtime[0].magnitude} size="sm" />
                       ) : null}
                     </div>
                   </div>
@@ -1980,6 +1941,7 @@ export function GempaRoneApp({
                         {filteredRealtime.length ? (
                           filteredRealtime.map((ev, idx) => {
                             const depthTier = depthCategoryLabel(ev.depth_km).tier;
+                            const tier = magTierInfo(ev.magnitude);
                             return (
                               <tr
                                 key={ev.event_id}
@@ -2006,9 +1968,14 @@ export function GempaRoneApp({
                                 <td className="td-mag" data-label="Magnitudo">
                                   <div className="cell-mag">
                                     <MagBadge magnitude={ev.magnitude} />
-                                    <span className="cell-mag__scale mono">
-                                      {magScaleRange(ev.magnitude)}
-                                    </span>
+                                    {tier.isHigh ? (
+                                      <span
+                                        className="high-mag-tag"
+                                        data-m={tier.bucket}
+                                      >
+                                        {tier.levelLabel}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </td>
                                 <td className="td-time nowrap" data-label="Waktu (WIB)">
@@ -2023,7 +1990,6 @@ export function GempaRoneApp({
                                 </td>
                                 <td className="td-region" data-label="Wilayah">
                                   <strong className="cell-region">{ev.region}</strong>
-                                  <div className="xsmall muted mono">ID: {ev.event_id}</div>
                                 </td>
                                 <td
                                   className="td-coord col-coord col-hide-tablet nowrap"
@@ -2038,22 +2004,17 @@ export function GempaRoneApp({
                                   <span className="depth-badge">{depthTier}</span>
                                 </td>
                                 <td className="td-status" data-label="Status">
-                                  <div className="row">
-                                    <span
-                                      className={`pill ${
-                                        ev.status === "confirmed"
-                                          ? "pill--obsidian"
-                                          : ""
-                                      }`}
-                                    >
-                                      {ev.status === "confirmed"
-                                        ? "Terkonfirmasi"
-                                        : "Otomatis"}
-                                    </span>
-                                    {ev.has_focal_mechanism ? (
-                                      <span className="pill">Fokal</span>
-                                    ) : null}
-                                  </div>
+                                  <span
+                                    className={`pill ${
+                                      ev.status === "confirmed"
+                                        ? "pill--obsidian"
+                                        : ""
+                                    }`}
+                                  >
+                                    {ev.status === "confirmed"
+                                      ? "Terkonfirmasi"
+                                      : "Otomatis"}
+                                  </span>
                                 </td>
                                 <td className="td-action num nowrap" data-label="Aksi">
                                   <button
@@ -2093,26 +2054,17 @@ export function GempaRoneApp({
               <div className="page-stack">
                 <section className="card map-banner-card" aria-label="Peta kejadian">
                   <div className="map-banner-card__head">
-                    <div>
-                      <h2>
-                        {activeTab === "felt"
-                          ? "Peta Sebaran 30 Gempa Dirasakan (Skala MMI & ShakeMap)"
-                          : "Peta Sebaran 30 Gempa Signifikan Magnitudo M 5,0+"}
-                      </h2>
-                      <p className="hint">
-                        {activeTab === "felt"
-                          ? "Menampilkan kejadian gempa yang dirasakan masyarakat lengkap dengan laporan skala MMI dan peta guncangan BMKG."
-                          : "Menampilkan gempa bumi bermagnitudo M 5,0 ke atas di wilayah Indonesia beserta analisis potensi tsunami BMKG."}
-                      </p>
-                    </div>
+                    <h2>
+                      {activeTab === "felt"
+                        ? "Peta Gempa Dirasakan (Skala MMI & ShakeMap)"
+                        : "Peta Gempa Signifikan Magnitudo M 5,0+"}
+                    </h2>
                     <div className="row">
                       <span className="pill">
                         {fmtNumber(currentAlertsSource.length)} kejadian resmi
                       </span>
                       {currentAlertsSource[0] ? (
-                        <span className="pill pill--obsidian mono">
-                          Terbaru: M {fmtMag(currentAlertsSource[0].magnitude)}
-                        </span>
+                        <MagBadge magnitude={currentAlertsSource[0].magnitude} size="sm" />
                       ) : null}
                     </div>
                   </div>
@@ -2310,6 +2262,7 @@ export function GempaRoneApp({
                           filteredAlerts.map((eq, idx) => {
                             const feltParsed = parseFelt(eq.felt);
                             const depthTier = depthCategoryLabel(eq.depth_km).tier;
+                            const tier = magTierInfo(eq.magnitude);
                             return (
                               <tr
                                 key={eq.event_id}
@@ -2338,9 +2291,14 @@ export function GempaRoneApp({
                                 <td className="td-mag" data-label="Magnitudo">
                                   <div className="cell-mag">
                                     <MagBadge magnitude={eq.magnitude} />
-                                    <span className="cell-mag__scale mono">
-                                      {magScaleRange(eq.magnitude)}
-                                    </span>
+                                    {tier.isHigh ? (
+                                      <span
+                                        className="high-mag-tag"
+                                        data-m={tier.bucket}
+                                      >
+                                        {tier.levelLabel}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 </td>
                                 <td className="td-time nowrap" data-label="Waktu (WIB)">
@@ -2982,9 +2940,14 @@ export function GempaRoneApp({
                               <td className="td-mag" data-label="Magnitudo">
                                 <div className="cell-mag">
                                   <MagBadge magnitude={ev.magnitude} />
-                                  <span className="cell-mag__scale mono">
-                                    {magScaleRange(ev.magnitude)}
-                                  </span>
+                                  {ev.magnitude >= 5.0 ? (
+                                    <span
+                                      className="high-mag-tag"
+                                      data-m={magBucket(ev.magnitude)}
+                                    >
+                                      {magTierInfo(ev.magnitude).levelLabel}
+                                    </span>
+                                  ) : null}
                                 </div>
                               </td>
                               <td className="td-time nowrap mono" data-label="Tanggal">
