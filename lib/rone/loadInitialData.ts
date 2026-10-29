@@ -29,9 +29,12 @@ async function readJsonFixture<T>(filename: string, fallback: T): Promise<T> {
   }
 }
 
-async function fetchRoneUpstream<T>(upstreamPath: string): Promise<T | null> {
+async function fetchRoneUpstream<T>(
+  upstreamPath: string,
+  timeoutMs = 1100
+): Promise<T | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${RONE_UPSTREAM}/${upstreamPath}`, {
       cache: "no-store",
@@ -50,55 +53,43 @@ async function fetchRoneUpstream<T>(upstreamPath: string): Promise<T | null> {
 interface ServerSnapshotCache {
   payload: InitialRonePayload;
   updatedAt: number;
+  isLive: boolean;
 }
 
 let snapshotCache: ServerSnapshotCache | null = null;
 let backgroundRefreshPromise: Promise<void> | null = null;
-const SNAPSHOT_TTL_MS = 20_000;
+const SNAPSHOT_TTL_MS = 15_000;
 
 async function fetchLiveSnapshot(
   baseFallback: InitialRonePayload
-): Promise<InitialRonePayload> {
+): Promise<{ payload: InitialRonePayload; isLive: boolean }> {
   const [
-    roneLatestWrap,
     directLatest,
-    roneRealtimeWrap,
     directRealtime,
-    roneFeltWrap,
     directFelt,
-    roneSigWrap,
     directSig,
     roneTsunamiWrap,
   ] = await Promise.all([
-    fetchRoneUpstream<{ data: InitialRonePayload["latest"] }>("earthquakes/latest"),
     fetchDirectBmkgLatest(),
-    fetchRoneUpstream<{ data: InitialRonePayload["realtime"] }>(
-      "earthquakes/realtime?limit=250"
-    ),
     fetchDirectBmkgRealtime(250, 0),
-    fetchRoneUpstream<{ data: InitialRonePayload["felt"] }>("earthquakes/felt"),
     fetchDirectBmkgFelt(),
-    fetchRoneUpstream<{ data: InitialRonePayload["significant"] }>(
-      "earthquakes/significant"
-    ),
     fetchDirectBmkgSignificant(),
-    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami"),
+    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami", 950),
   ]);
 
-  const latest =
-    pickNewerEarthquake(roneLatestWrap?.data, directLatest) || baseFallback.latest;
+  const latest = pickNewerEarthquake(directLatest, baseFallback.latest);
 
   const mergedRealtime = mergeRealtimeEvents(
     directRealtime,
-    roneRealtimeWrap?.data || [],
+    baseFallback.realtime,
     250
   );
   const realtime = mergedRealtime.length ? mergedRealtime : baseFallback.realtime;
 
-  const pickedFelt = pickNewerEarthquakeList(directFelt, roneFeltWrap?.data || []);
+  const pickedFelt = pickNewerEarthquakeList(directFelt, baseFallback.felt);
   const felt = pickedFelt.length ? pickedFelt : baseFallback.felt;
 
-  const pickedSig = pickNewerEarthquakeList(directSig, roneSigWrap?.data || []);
+  const pickedSig = pickNewerEarthquakeList(directSig, baseFallback.significant);
   const significant = pickedSig.length ? pickedSig : baseFallback.significant;
 
   const tsunami =
@@ -106,14 +97,21 @@ async function fetchLiveSnapshot(
       ? roneTsunamiWrap.data
       : baseFallback.tsunami;
 
+  const isLive = Boolean(
+    directLatest || directRealtime.length > 0 || directFelt.length > 0
+  );
+
   return {
-    latest,
-    realtime,
-    felt,
-    significant,
-    tsunami,
-    archive3m: baseFallback.archive3m,
-    referenceNowMs: Date.now(),
+    payload: {
+      latest,
+      realtime,
+      felt,
+      significant,
+      tsunami,
+      archive3m: baseFallback.archive3m,
+      referenceNowMs: Date.now(),
+    },
+    isLive,
   };
 }
 
@@ -157,10 +155,13 @@ function triggerBackgroundRefresh(base: InitialRonePayload) {
   if (backgroundRefreshPromise) return;
   backgroundRefreshPromise = fetchLiveSnapshot(base)
     .then((fresh) => {
-      snapshotCache = {
-        payload: fresh,
-        updatedAt: Date.now(),
-      };
+      if (fresh.isLive || !snapshotCache) {
+        snapshotCache = {
+          payload: fresh.payload,
+          updatedAt: Date.now(),
+          isLive: fresh.isLive,
+        };
+      }
     })
     .catch(() => {})
     .finally(() => {
@@ -170,7 +171,7 @@ function triggerBackgroundRefresh(base: InitialRonePayload) {
 
 export async function loadInitialRoneData(): Promise<InitialRonePayload> {
   const now = Date.now();
-  if (snapshotCache) {
+  if (snapshotCache && snapshotCache.isLive) {
     if (now - snapshotCache.updatedAt > SNAPSHOT_TTL_MS) {
       triggerBackgroundRefresh(snapshotCache.payload);
     }
@@ -182,24 +183,21 @@ export async function loadInitialRoneData(): Promise<InitialRonePayload> {
 
   const localBase = await loadFastLocalBase();
 
-  // Race live fetch against a tight 380ms budget so SSR TTFB stays instant for PageSpeed Insights
+  // Wait up to 2400ms for direct BMKG InaTEWS live feeds (~400-750ms typical) so initial page load always shows real-time data
   const raceResult = await Promise.race([
     fetchLiveSnapshot(localBase).catch(() => null),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 380)),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2400)),
   ]);
 
   if (raceResult) {
     snapshotCache = {
-      payload: raceResult,
+      payload: raceResult.payload,
       updatedAt: Date.now(),
+      isLive: raceResult.isLive,
     };
-    return raceResult;
+    return raceResult.payload;
   }
 
-  snapshotCache = {
-    payload: localBase,
-    updatedAt: Date.now() - SNAPSHOT_TTL_MS,
-  };
   triggerBackgroundRefresh(localBase);
   return localBase;
 }

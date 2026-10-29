@@ -324,7 +324,7 @@ export async function GET(
   // 4. Multi-Source Live Handlers for Core Dynamic Feeds (Guaranteed Live on Vercel & Local)
   if (slugPath === "earthquakes/latest") {
     const [roneWrap, directLatest] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake | null }>("earthquakes/latest"),
+      fetchRoneJson<{ data: RoneEarthquake | null }>("earthquakes/latest", 900),
       fetchDirectBmkgLatest(),
     ]);
     const latest = pickNewerEarthquake(roneWrap?.data, directLatest);
@@ -351,7 +351,8 @@ export async function GET(
     const limit = Number(req.nextUrl.searchParams.get("limit") || "250");
     const [roneWrap, directList] = await Promise.all([
       fetchRoneJson<{ data: RoneRealtimeEvent[] }>(
-        `earthquakes/realtime?limit=${Math.max(limit, 250)}`
+        `earthquakes/realtime?limit=${Math.max(limit, 250)}`,
+        900
       ),
       fetchDirectBmkgRealtime(Math.max(limit, 250), 0),
     ]);
@@ -379,7 +380,7 @@ export async function GET(
 
   if (slugPath === "earthquakes/felt") {
     const [roneWrap, directFelt] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/felt"),
+      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/felt", 900),
       fetchDirectBmkgFelt(),
     ]);
     const felt = pickNewerEarthquakeList(directFelt, roneWrap?.data || []);
@@ -403,7 +404,7 @@ export async function GET(
 
   if (slugPath === "earthquakes/significant") {
     const [roneWrap, directSig] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/significant"),
+      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/significant", 900),
       fetchDirectBmkgSignificant(),
     ]);
     const significant = pickNewerEarthquakeList(directSig, roneWrap?.data || []);
