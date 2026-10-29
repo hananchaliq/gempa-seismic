@@ -113,10 +113,9 @@ export function MagBadge({
         } as React.CSSProperties
       }
       title={`Magnitudo M ${fmtMag(magnitude)} (${category})`}
-      aria-label={`Magnitudo M ${fmtMag(magnitude)} — ${category}`}
     >
-      <span className="mag-gauge__ring" aria-hidden="true">
-        <svg viewBox="0 0 100 100" className="mag-gauge__svg">
+      <span className="mag-gauge__ring">
+        <svg viewBox="0 0 100 100" className="mag-gauge__svg" aria-hidden="true">
           {/* Recessed dark 270° groove track */}
           <circle
             className="mag-gauge__track"
@@ -136,6 +135,7 @@ export function MagBadge({
           />
         </svg>
         <span className="mag-gauge__well">
+          <span className="visually-hidden">M </span>
           <span className="mag-gauge__num">{animatedNum}</span>
         </span>
       </span>
@@ -203,7 +203,7 @@ export function MagDial({
 
 export function MagLegend() {
   return (
-    <div className="legend" aria-label="Legenda kekuatan magnitudo">
+    <div className="legend" role="region" aria-label="Legenda kekuatan magnitudo">
       <span>Skala Kekuatan Magnitudo</span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-0)" } as React.CSSProperties} />

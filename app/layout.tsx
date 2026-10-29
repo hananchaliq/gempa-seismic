@@ -49,6 +49,14 @@ export default function RootLayout({
       className={`${plusJakartaSans.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link
+          rel="preconnect"
+          href="https://server.arcgisonline.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://server.arcgisonline.com" />
+      </head>
       <body suppressHydrationWarning>{children}</body>
     </html>
   );

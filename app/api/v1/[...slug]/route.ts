@@ -178,20 +178,46 @@ export async function GET(
   // 1. Handle binary media proxy (/api/v1/media/{event_id}/{kind})
   if (slug[0] === "media") {
     const eventId = slug[1] || "BMKG";
-    const kind = slug[2] || "shakemap";
+    const kind = (slug[2] || "shakemap").toLowerCase();
 
-    const candidateUrls: string[] = [`${RONE_UPSTREAM}/${slugPath}`];
-    if (kind === "shakemap" && /^\d{14}$/.test(eventId)) {
-      // Official BMKG InaTEWS GCS & TEWS direct ShakeMap JPGs (never blocked by Cloudflare on Vercel)
-      candidateUrls.unshift(`${BMKG_GCS_BASE}/${eventId}.mmi.jpg`);
-      candidateUrls.push(`${BMKG_TEWS_BASE}/${eventId}.mmi.jpg`);
+    const candidateUrls: string[] = [];
+    if (/^\d{14}$/.test(eventId)) {
+      if (kind === "shakemap") {
+        candidateUrls.push(
+          `${BMKG_GCS_BASE}/${eventId}.mmi.jpg`,
+          `${BMKG_TEWS_BASE}/${eventId}.mmi.jpg`
+        );
+      } else if (kind === "tsunami-zones" || kind === "warning_zones" || kind === "wzmap") {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}.wz.png`);
+      } else if (
+        kind === "tsunami-travel-time" ||
+        kind === "travel_time" ||
+        kind === "ttmap"
+      ) {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}.tt.png`);
+      } else if (
+        kind === "tsunami-sea-height" ||
+        kind === "sea_height" ||
+        kind === "sshmap"
+      ) {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}.ssh.png`);
+      } else if (kind === "location-map" || kind === "location_map") {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}_rev/loc_map.png`);
+      } else if (kind === "station-intensity" || kind === "station_intensity") {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}_rev/stationlist_MMI.jpg`);
+      } else if (kind === "impact") {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}_rev/impact_list.jpg`);
+      } else if (kind === "intensity") {
+        candidateUrls.push(`${BMKG_GCS_BASE}/${eventId}_rev/intensity_logo.jpg`);
+      }
     }
+    candidateUrls.push(`${RONE_UPSTREAM}/${slugPath}`);
 
     try {
       const resolvedImage = await Promise.any(
         candidateUrls.map(async (mediaUrl) => {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 1400);
+          const timeout = setTimeout(() => controller.abort(), 6500);
           try {
             const res = await fetch(mediaUrl, {
               cache: "no-store",
@@ -200,12 +226,17 @@ export async function GET(
             });
             if (!res.ok) throw new Error("Not OK");
             const contentType = res.headers.get("Content-Type") || "";
-            if (!contentType.startsWith("image/") && !mediaUrl.endsWith(".jpg")) {
+            if (
+              !contentType.startsWith("image/") &&
+              !mediaUrl.endsWith(".jpg") &&
+              !mediaUrl.endsWith(".png")
+            ) {
               throw new Error("Not image");
             }
             const buf = await res.arrayBuffer();
             if (buf.byteLength < 100) throw new Error("Empty image");
-            return { buf, contentType: contentType || "image/jpeg" };
+            const fallbackMime = mediaUrl.endsWith(".png") ? "image/png" : "image/jpeg";
+            return { buf, contentType: contentType || fallbackMime };
           } finally {
             clearTimeout(timeout);
           }
@@ -216,7 +247,7 @@ export async function GET(
         status: 200,
         headers: {
           "Content-Type": resolvedImage.contentType,
-          "Cache-Control": "public, max-age=1800",
+          "Cache-Control": "public, max-age=3600, s-maxage=3600",
         },
       });
     } catch {

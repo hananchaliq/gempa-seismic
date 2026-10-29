@@ -200,6 +200,7 @@ export function EpicenterDistanceBar({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="seismic-calc"
+      role="region"
       aria-label="Kalkulator jarak episenter dan gelombang"
     >
       <div className="seismic-calc__top">
@@ -285,7 +286,7 @@ export function SeismicCapsuleTimeline({
   const offsets = [0, 6, 12, 4];
 
   return (
-    <div className="capsule-timeline" aria-label="Kronologi deteksi terbaru">
+    <div className="capsule-timeline" role="region" aria-label="Kronologi deteksi terbaru">
       <div className="capsule-timeline__rows">
         {items.map((ev, idx) => {
           const timeLabel = fmtClockWib(new Date(ev.origin_time)).replace(".", ":");
@@ -511,15 +512,12 @@ export function SeismicMagnitudeSplineCard({
           strokeWidth="1.5"
           strokeLinecap="round"
         />
-        <motion.path
+        <path
           d={primaryWave}
           fill="none"
           stroke="var(--ink)"
           strokeWidth="2.4"
           strokeLinecap="round"
-          initial={refreshCycle > 0 ? { pathLength: 0.25, opacity: 0.5 } : false}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.65, ease: "easeOut" }}
         />
 
         {points.map((pt) => {
@@ -664,6 +662,7 @@ export function StackedQuickQuakesDeck({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className="quake-deck"
+      role="region"
       aria-label="Kartu pantauan cepat gempa utama"
     >
       <div className="quake-deck__head">

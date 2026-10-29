@@ -38,12 +38,12 @@
   --accent-soft: rgba(17, 17, 19, 0.08);
   --accent-ink: #111113;
 
-  --ok: #16A34A;
-  --ok-soft: rgba(22, 163, 74, 0.14);
-  --warn: #D97706;
-  --warn-soft: rgba(217, 119, 6, 0.14);
-  --danger: #DC2626;
-  --danger-soft: rgba(220, 38, 38, 0.14);
+  --ok: #0F5132;
+  --ok-soft: rgba(15, 81, 50, 0.14);
+  --warn: #92400E;
+  --warn-soft: rgba(146, 64, 14, 0.14);
+  --danger: #991B1B;
+  --danger-soft: rgba(153, 27, 27, 0.14);
 
   /* Calibrated Magnitude Scale Colors (Matches Reference Image 2) */
   --m-0: #64748B;
@@ -551,25 +551,37 @@ body {
 }
 
 .live-pulse-dot {
+  position: relative;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #22C55E;
+  background: #16A34A;
   display: inline-block;
   flex-shrink: 0;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  animation: livePulseRadar 2s infinite;
+}
+
+.live-pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.45);
+  animation: livePulseRadar 2s ease-out infinite;
+  pointer-events: none;
 }
 
 @keyframes livePulseRadar {
   0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+    transform: scale(0.65);
+    opacity: 0.9;
   }
-  70% {
-    box-shadow: 0 0 0 7px rgba(34, 197, 94, 0);
+  75% {
+    transform: scale(1.85);
+    opacity: 0;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    transform: scale(1.85);
+    opacity: 0;
   }
 }
 
@@ -608,6 +620,7 @@ body {
 .topbar-search input {
   flex: 1;
   min-width: 0;
+  height: 28px;
   border: 0;
   background: transparent;
   color: var(--ink);
@@ -1213,19 +1226,26 @@ body {
 }
 
 .layman-status-badge.is-safe {
-  background: var(--ok-soft);
-  color: var(--ok);
+  background: rgba(15, 81, 50, 0.14);
+  color: #0B3B24;
+  border: 1px solid rgba(15, 81, 50, 0.25);
+}
+
+[data-theme="dark"] .layman-status-badge.is-safe {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86EFAC;
+  border-color: rgba(134, 239, 172, 0.28);
 }
 
 .layman-status-badge.is-warn {
-  background: var(--signal-soft);
-  color: var(--signal);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .layman-summary__loc {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 @media (min-width: 1100px) {
@@ -1235,25 +1255,26 @@ body {
 }
 
 .layman-city-select select {
-  height: 26px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 10px;
   border-radius: var(--r-pill);
   border: 1px solid var(--line-strong);
   background: var(--bg-card);
   color: var(--ink);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
 }
 
 .layman-gps-btn {
-  height: 26px;
-  padding: 0 9px;
+  height: 28px;
+  min-width: 38px;
+  padding: 0 10px;
   border-radius: var(--r-pill);
   border: 0;
   background: var(--obsidian);
   color: var(--obsidian-ink);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -1470,42 +1491,10 @@ body {
 
 @keyframes radialArcSweep {
   0% {
-    stroke-dashoffset: 80;
-    opacity: 0.45;
+    opacity: 0.65;
   }
   100% {
-    stroke-dashoffset: 0;
     opacity: 1;
-  }
-}
-
-@keyframes dialHighPulse {
-  0%,
-  100% {
-    box-shadow:
-      0 10px 24px rgba(0, 0, 0, 0.35),
-      0 0 0 0 rgba(234, 88, 12, 0.32),
-      inset 0 1px 1px rgba(255, 255, 255, 0.08);
-  }
-  50% {
-    box-shadow:
-      0 12px 28px rgba(0, 0, 0, 0.44),
-      0 0 0 7px rgba(234, 88, 12, 0),
-      inset 0 1px 1px rgba(255, 255, 255, 0.12);
-  }
-}
-
-@keyframes miniGaugeHighPulse {
-  0%,
-  100% {
-    box-shadow:
-      0 4px 10px rgba(0, 0, 0, 0.28),
-      0 0 0 0 rgba(234, 88, 12, 0.38);
-  }
-  50% {
-    box-shadow:
-      0 5px 14px rgba(0, 0, 0, 0.36),
-      0 0 0 5px rgba(234, 88, 12, 0);
   }
 }
 
@@ -1537,7 +1526,10 @@ body {
 }
 
 .dial--high {
-  animation: dialHighPulse 2.5s ease-in-out infinite;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.38),
+    0 0 0 3px rgba(234, 88, 12, 0.24),
+    inset 0 2px 3px rgba(255, 255, 255, 0.08);
 }
 
 .dial__svg {
@@ -1688,7 +1680,9 @@ body {
 }
 
 .mag-gauge--high .mag-gauge__ring {
-  animation: miniGaugeHighPulse 2.4s ease-in-out infinite;
+  box-shadow:
+    0 5px 12px rgba(0, 0, 0, 0.32),
+    0 0 0 2px rgba(234, 88, 12, 0.26);
 }
 
 .mag-gauge__svg {
@@ -1955,7 +1949,7 @@ body {
 
 .spline-widget__tabs {
   display: inline-flex;
-  gap: 2px;
+  gap: 4px;
   padding: 3px;
   border-radius: var(--r-pill);
   background: var(--bg-sunken);
@@ -1963,12 +1957,14 @@ body {
 }
 
 .spline-tab {
-  padding: 3px 8px;
+  min-width: 30px;
+  min-height: 26px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
   border: 0;
   background: transparent;
   color: var(--ink-2);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -5337,6 +5333,10 @@ body {
 
 .site-footer nav button,
 .site-footer nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 6px;
   background: transparent;
   border: 0;
   color: var(--ink);
@@ -5345,7 +5345,6 @@ body {
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
-  padding: 0;
 }
 
 /* Buttons, Pills, Pager, Toast, Helpers */
@@ -5396,6 +5395,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 28px;
+  padding: 4px 8px;
   background: transparent;
   border: 0;
   color: var(--ink);

@@ -28,33 +28,95 @@ export interface MediaItem {
   label: string;
   caption: string;
   src: string;
+  fallbackSrc?: string;
 }
 
-export function resolveMediaUrl(src?: string | null): string | null {
+const BMKG_GCS_BASE = "https://bmkg-content-inatews.storage.googleapis.com";
+
+export function resolveMediaPair(
+  src?: string | null
+): { src: string; fallbackSrc?: string } | null {
   if (!src || typeof src !== "string") return null;
   const trimmed = src.trim();
   if (!trimmed) return null;
   if (trimmed.startsWith("data:")) {
-    return trimmed;
+    return { src: trimmed };
   }
   const mediaMatch = trimmed.match(/\/api\/v1\/media\/([^/?#]+)\/([^/?#]+)/);
   if (mediaMatch) {
-    return `/api/v1/media/${mediaMatch[1]}/${mediaMatch[2]}`;
+    const eventId = mediaMatch[1];
+    const kind = mediaMatch[2].toLowerCase();
+    const proxyUrl = `/api/v1/media/${eventId}/${kind}`;
+    if (/^\d{14}$/.test(eventId)) {
+      if (kind === "shakemap") {
+        return { src: `${BMKG_GCS_BASE}/${eventId}.mmi.jpg`, fallbackSrc: proxyUrl };
+      }
+      if (kind === "tsunami-zones" || kind === "warning_zones" || kind === "wzmap") {
+        return { src: `${BMKG_GCS_BASE}/${eventId}.wz.png`, fallbackSrc: proxyUrl };
+      }
+      if (
+        kind === "tsunami-travel-time" ||
+        kind === "travel_time" ||
+        kind === "ttmap"
+      ) {
+        return { src: `${BMKG_GCS_BASE}/${eventId}.tt.png`, fallbackSrc: proxyUrl };
+      }
+      if (
+        kind === "tsunami-sea-height" ||
+        kind === "sea_height" ||
+        kind === "sshmap"
+      ) {
+        return { src: `${BMKG_GCS_BASE}/${eventId}.ssh.png`, fallbackSrc: proxyUrl };
+      }
+      if (kind === "location-map" || kind === "location_map") {
+        return {
+          src: `${BMKG_GCS_BASE}/${eventId}_rev/loc_map.png`,
+          fallbackSrc: proxyUrl,
+        };
+      }
+      if (kind === "station-intensity" || kind === "station_intensity") {
+        return {
+          src: `${BMKG_GCS_BASE}/${eventId}_rev/stationlist_MMI.jpg`,
+          fallbackSrc: proxyUrl,
+        };
+      }
+      if (kind === "impact") {
+        return {
+          src: `${BMKG_GCS_BASE}/${eventId}_rev/impact_list.jpg`,
+          fallbackSrc: proxyUrl,
+        };
+      }
+      if (kind === "intensity") {
+        return {
+          src: `${BMKG_GCS_BASE}/${eventId}_rev/intensity_logo.jpg`,
+          fallbackSrc: proxyUrl,
+        };
+      }
+    }
+    return { src: proxyUrl };
   }
   const bmkgShakemapMatch = trimmed.match(/\/(\d{14})\.mmi\.jpg$/i);
   if (bmkgShakemapMatch) {
-    return `/api/v1/media/${bmkgShakemapMatch[1]}/shakemap`;
+    const eventId = bmkgShakemapMatch[1];
+    return {
+      src: `${BMKG_GCS_BASE}/${eventId}.mmi.jpg`,
+      fallbackSrc: `/api/v1/media/${eventId}/shakemap`,
+    };
   }
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
+    return { src: trimmed };
   }
   if (trimmed.startsWith("/api/")) {
-    return trimmed;
+    return { src: trimmed };
   }
   if (trimmed.startsWith("/")) {
-    return `https://gempa.rone.dev${trimmed}`;
+    return { src: `https://gempa.rone.dev${trimmed}` };
   }
-  return `https://gempa.rone.dev/${trimmed}`;
+  return { src: `https://gempa.rone.dev/${trimmed}` };
+}
+
+export function resolveMediaUrl(src?: string | null): string | null {
+  return resolveMediaPair(src)?.src || null;
 }
 
 function SeismicMediaFallback({
@@ -171,14 +233,21 @@ export function MediaViewerSection({
   onOpenLightbox: (validItems: MediaItem[], index: number) => void;
 }) {
   const valid: MediaItem[] = items
-    .map((i) => {
-      const resolved = resolveMediaUrl(i.src);
-      return resolved ? { label: i.label, caption: i.caption, src: resolved } : null;
+    .map((i): MediaItem | null => {
+      const resolved = resolveMediaPair(i.src);
+      return resolved
+        ? {
+            label: i.label,
+            caption: i.caption,
+            src: resolved.src,
+            fallbackSrc: resolved.fallbackSrc,
+          }
+        : null;
     })
-    .filter((i): i is MediaItem => Boolean(i));
+    .filter((i): i is MediaItem => i !== null);
 
   const [activeIdx, setActiveIdx] = useState(0);
-  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
+  const [fallbackUsedMap, setFallbackUsedMap] = useState<Record<string, boolean>>({});
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
   const [dragOffsetX, setDragOffsetX] = useState(0);
   const gestureStartRef = React.useRef<{ x: number; y: number } | null>(null);
@@ -187,16 +256,12 @@ export function MediaViewerSection({
   const safeIdx = valid.length ? Math.min(activeIdx, valid.length - 1) : 0;
   const current = valid[safeIdx];
 
-  useEffect(() => {
-    if (!current || loadedMap[current.src] || failedMap[current.src]) return;
-    const timer = setTimeout(() => {
-      setFailedMap((prev) => (loadedMap[current.src] ? prev : { ...prev, [current.src]: true }));
-    }, 4500);
-    return () => clearTimeout(timer);
-  }, [current, loadedMap, failedMap]);
-
   if (!valid.length || !current) return null;
   const isCurrentFailed = Boolean(failedMap[current.src]);
+  const activeCurrentSrc =
+    fallbackUsedMap[current.src] && current.fallbackSrc
+      ? current.fallbackSrc
+      : current.src;
   const multi = valid.length > 1;
 
   const startSwipe = (x: number, y: number) => {
@@ -297,23 +362,25 @@ export function MediaViewerSection({
               <SeismicMediaFallback label={current.label} caption={current.caption} />
             ) : (
               <img
-                src={current.src}
+                key={activeCurrentSrc}
+                src={activeCurrentSrc}
                 alt={current.caption || current.label}
                 decoding="async"
                 draggable={false}
                 referrerPolicy="no-referrer"
-                onLoad={() =>
-                  setLoadedMap((prev) => ({
-                    ...prev,
-                    [current.src]: true,
-                  }))
-                }
-                onError={() =>
-                  setFailedMap((prev) => ({
-                    ...prev,
-                    [current.src]: true,
-                  }))
-                }
+                onError={() => {
+                  if (current.fallbackSrc && !fallbackUsedMap[current.src]) {
+                    setFallbackUsedMap((prev) => ({
+                      ...prev,
+                      [current.src]: true,
+                    }));
+                  } else {
+                    setFailedMap((prev) => ({
+                      ...prev,
+                      [current.src]: true,
+                    }));
+                  }
+                }}
               />
             )}
           </div>
@@ -346,6 +413,10 @@ export function MediaViewerSection({
           <div className="viewer__tabs" role="tablist" aria-label={title}>
             {valid.map((item, idx) => {
               const isTabFailed = Boolean(failedMap[item.src]);
+              const tabSrc =
+                fallbackUsedMap[item.src] && item.fallbackSrc
+                  ? item.fallbackSrc
+                  : item.src;
               return (
                 <button
                   key={item.label}
@@ -355,7 +426,31 @@ export function MediaViewerSection({
                   aria-selected={idx === safeIdx ? "true" : "false"}
                   onClick={() => setActiveIdx(idx)}
                 >
-                  <SeismicMediaFallback label={item.label} compact />
+                  {isTabFailed ? (
+                    <SeismicMediaFallback label={item.label} compact />
+                  ) : (
+                    <img
+                      src={tabSrc}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      draggable={false}
+                      referrerPolicy="no-referrer"
+                      onError={() => {
+                        if (item.fallbackSrc && !fallbackUsedMap[item.src]) {
+                          setFallbackUsedMap((prev) => ({
+                            ...prev,
+                            [item.src]: true,
+                          }));
+                        } else {
+                          setFailedMap((prev) => ({
+                            ...prev,
+                            [item.src]: true,
+                          }));
+                        }
+                      }}
+                    />
+                  )}
                   <span>{item.label}</span>
                 </button>
               );
@@ -811,19 +906,15 @@ export function RoneLightbox({
   }, [state, onClose]);
 
   const current = state?.items?.[idx] || state?.items?.[0] || null;
-  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    if (!current || loadedMap[current.src] || failedMap[current.src]) return;
-    const timer = setTimeout(() => {
-      setFailedMap((prev) => (loadedMap[current.src] ? prev : { ...prev, [current.src]: true }));
-    }, 3500);
-    return () => clearTimeout(timer);
-  }, [current, loadedMap, failedMap]);
+  const [fallbackUsedMap, setFallbackUsedMap] = useState<Record<string, boolean>>({});
 
   if (!state || !state.items.length || !current) return null;
   const multi = state.items.length > 1;
   const isCurrentFailed = Boolean(failedMap[current.src]);
+  const activeLightboxSrc =
+    fallbackUsedMap[current.src] && current.fallbackSrc
+      ? current.fallbackSrc
+      : current.src;
 
   const resetZoomAndPan = () => {
     setZoom(1);
@@ -991,22 +1082,24 @@ export function RoneLightbox({
             />
           ) : (
             <img
-              src={current.src}
+              key={activeLightboxSrc}
+              src={activeLightboxSrc}
               alt={current.caption || current.label}
               draggable={false}
               referrerPolicy="no-referrer"
-              onLoad={() =>
-                setLoadedMap((prev) => ({
-                  ...prev,
-                  [current.src]: true,
-                }))
-              }
-              onError={() =>
-                setFailedMap((prev) => ({
-                  ...prev,
-                  [current.src]: true,
-                }))
-              }
+              onError={() => {
+                if (current.fallbackSrc && !fallbackUsedMap[current.src]) {
+                  setFallbackUsedMap((prev) => ({
+                    ...prev,
+                    [current.src]: true,
+                  }));
+                } else {
+                  setFailedMap((prev) => ({
+                    ...prev,
+                    [current.src]: true,
+                  }));
+                }
+              }}
             />
           )}
         </div>

@@ -449,7 +449,7 @@ export function GempaRoneApp({
   useEffect(() => {
     const initialSyncTimer = setTimeout(() => {
       refreshLiveFeeds(false);
-    }, 3500);
+    }, 25000);
 
     const pollTimer = setInterval(() => {
       refreshLiveFeeds(false);
@@ -820,7 +820,7 @@ export function GempaRoneApp({
           </nav>
 
           {/* Compact Location Reference Pod */}
-          <div className="sidebar-pod" aria-label="Lokasi referensi kalkulasi jarak">
+          <div className="sidebar-pod" role="region" aria-label="Lokasi referensi kalkulasi jarak">
             <div className="sidebar-pod__controls">
               <span className="sidebar-pod__pin" aria-hidden="true">
                 <RoneIcon name="pin" />
@@ -1055,6 +1055,7 @@ export function GempaRoneApp({
                   {heroLaymanSummary && activeHeroQuake ? (
                     <div
                       className="layman-summary"
+                      role="region"
                       aria-label="Ringkasan dampak gempa untuk masyarakat"
                     >
                       <div className="layman-summary__top">
@@ -1608,13 +1609,12 @@ export function GempaRoneApp({
                               const isPeak = w === weeklyChartData.peak;
                               const pct = `${(w.count / weeklyChartData.top) * 100}%`;
                               return (
-                                <button
+                                <div
                                   key={`${w.start}-${refreshCycle}`}
-                                  type="button"
                                   className={`chart__col${isPeak ? " is-peak" : ""}${
                                     w.partial ? " is-partial" : ""
                                   }`}
-                                  aria-label={`${w.label}: ${w.count} gempa`}
+                                  title={`${w.label}: ${w.count} gempa`}
                                   style={
                                     { "--h": pct, "--delay": `${i * 28}ms` } as React.CSSProperties
                                   }
@@ -1644,7 +1644,7 @@ export function GempaRoneApp({
                                       ? w.shortLabel
                                       : ""}
                                   </span>
-                                </button>
+                                </div>
                               );
                             })}
                           </div>
@@ -2469,10 +2469,35 @@ export function GempaRoneApp({
                     );
                     const zones: RoneTsunamiZone[] =
                       zoneBulletin?.warning_zones || zoneBulletin?.zones || [];
-                    const mediaSource =
-                      ev.bulletins.find((b) => b.media?.warning_zones)?.media ||
-                      ev.bulletins[0]?.media ||
-                      {};
+                    const mediaBulletin =
+                      zoneBulletin ||
+                      ev.bulletins.find((b) => b.media?.warning_zones) ||
+                      ev.bulletins[0];
+                    const mediaEventId =
+                      mediaBulletin?.event_id || ev.bulletins[0]?.event_id || ev.id;
+                    const rawMedia = mediaBulletin?.media || {};
+                    const mediaSource = {
+                      warning_zones:
+                        rawMedia.warning_zones ||
+                        (mediaEventId
+                          ? `/api/v1/media/${mediaEventId}/tsunami-zones`
+                          : null),
+                      travel_time:
+                        rawMedia.travel_time ||
+                        (mediaEventId
+                          ? `/api/v1/media/${mediaEventId}/tsunami-travel-time`
+                          : null),
+                      sea_height:
+                        rawMedia.sea_height ||
+                        (mediaEventId
+                          ? `/api/v1/media/${mediaEventId}/tsunami-sea-height`
+                          : null),
+                      shakemap:
+                        rawMedia.shakemap ||
+                        (mediaEventId
+                          ? `/api/v1/media/${mediaEventId}/shakemap`
+                          : null),
+                    };
 
                     const counts: Record<string, number> = {
                       AWAS: 0,
