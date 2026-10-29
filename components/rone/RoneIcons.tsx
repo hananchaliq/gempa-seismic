@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
   fmtDateTime,
   fmtDepth,
@@ -10,46 +10,26 @@ import {
   magCategory,
 } from "@/lib/rone/format";
 
-function useAnimatedMagnitudeRef(target: number, durationMs = 520) {
-  const nodeRef = useRef<HTMLSpanElement | null>(null);
-  const prevTargetRef = useRef<number | null>(null);
+function useAnimatedMagnitude(target: number, durationMs = 520): string {
+  const [val, setVal] = useState<number>(target);
 
   useEffect(() => {
-    const el = nodeRef.current;
-    if (!el || !Number.isFinite(target)) return;
-
-    // On initial mount, keep SSR text intact during the critical first paint window,
-    // or animate smoothly when target updates or when user navigates.
-    const isInitialMount = prevTargetRef.current === null;
-    const prevVal = prevTargetRef.current ?? target;
-    prevTargetRef.current = target;
-
-    if (isInitialMount) {
-      el.textContent = fmtMag(target);
-      return;
-    }
-
-    if (Math.abs(prevVal - target) < 0.01) {
-      el.textContent = fmtMag(target);
-      return;
-    }
-
+    if (!Number.isFinite(target)) return;
     let rafId = 0;
     const startTime = performance.now();
-    const startVal = Math.max(0, target * 0.35);
+    const startVal = Math.max(0, target * 0.25);
 
     const step = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / durationMs);
+      // Cubic ease-out
       const eased = 1 - Math.pow(1 - t, 3);
       const current = startVal + (target - startVal) * eased;
-      if (nodeRef.current) {
-        nodeRef.current.textContent = fmtMag(current);
-      }
+      setVal(current);
       if (t < 1) {
         rafId = requestAnimationFrame(step);
-      } else if (nodeRef.current) {
-        nodeRef.current.textContent = fmtMag(target);
+      } else {
+        setVal(target);
       }
     };
 
@@ -57,7 +37,7 @@ function useAnimatedMagnitudeRef(target: number, durationMs = 520) {
     return () => cancelAnimationFrame(rafId);
   }, [target, durationMs]);
 
-  return nodeRef;
+  return fmtMag(val);
 }
 
 export const ICON_PATHS: Record<string, string> = {
@@ -139,7 +119,7 @@ export function MagBadge({
   const bucket = magBucket(magnitude);
   const category = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const numRef = useAnimatedMagnitudeRef(magnitude, 480);
+  const animatedNum = useAnimatedMagnitude(magnitude, 480);
   // 270-degree track is 75% of 100 pathLength; scale magnitude [1.5..8.8] across [10..74]
   const arcFill = Number(
     Math.max(10, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
@@ -182,9 +162,7 @@ export function MagBadge({
           />
         </svg>
         <span className="mag-gauge__well">
-          <span ref={numRef} className="mag-gauge__num">
-            {fmtMag(magnitude)}
-          </span>
+          <span className="mag-gauge__num">{animatedNum}</span>
         </span>
       </span>
       {labelOverride ? (
@@ -208,7 +186,7 @@ export function MagDial({
   const bucket = magBucket(magnitude);
   const strengthLabel = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const numRef = useAnimatedMagnitudeRef(magnitude, 580);
+  const animatedNum = useAnimatedMagnitude(magnitude, 580);
   const fill = Number(
     Math.max(11, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
   );
@@ -242,9 +220,7 @@ export function MagDial({
         />
       </svg>
       <span className="dial__well">
-        <span ref={numRef} className="dial__num">
-          {fmtMag(magnitude)}
-        </span>
+        <span className="dial__num">{animatedNum}</span>
         <span className="dial__label">{strengthLabel}</span>
       </span>
     </div>
