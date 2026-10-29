@@ -1,5 +1,2 @@
 User-agent: *
 Allow: /
-Disallow: /api/
-
-Sitemap: https://gempa-seismic.naan.my.id/sitemap.xml
