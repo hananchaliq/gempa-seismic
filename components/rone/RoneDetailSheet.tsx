@@ -159,21 +159,117 @@ export function MediaViewerSection({
 
   const [activeIdx, setActiveIdx] = useState(0);
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const gestureRef = React.useRef<{
+    startX: number;
+    startY: number;
+    moved: boolean;
+    active: boolean;
+  } | null>(null);
 
   if (!valid.length) return null;
   const safeIdx = Math.min(activeIdx, valid.length - 1);
   const current = valid[safeIdx];
   const isCurrentFailed = Boolean(failedMap[current.src]);
+  const multi = valid.length > 1;
+
+  const goPrev = () => {
+    setActiveIdx((i) => (i - 1 + valid.length) % valid.length);
+  };
+  const goNext = () => {
+    setActiveIdx((i) => (i + 1) % valid.length);
+  };
 
   return (
     <section className="viewer-section">
       <h3>{title}</h3>
       <div className="viewer">
-        <button
+        <div
           className="viewer__stage"
-          type="button"
-          onClick={() => onOpenLightbox(valid, safeIdx)}
-          aria-label={`Perbesar ${current.label}`}
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (gestureRef.current?.moved) return;
+            onOpenLightbox(valid, safeIdx);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onOpenLightbox(valid, safeIdx);
+            } else if (multi && e.key === "ArrowLeft") {
+              e.preventDefault();
+              goPrev();
+            } else if (multi && e.key === "ArrowRight") {
+              e.preventDefault();
+              goNext();
+            }
+          }}
+          onTouchStart={(e) => {
+            if (!multi || e.touches.length !== 1) return;
+            gestureRef.current = {
+              startX: e.touches[0].clientX,
+              startY: e.touches[0].clientY,
+              moved: false,
+              active: true,
+            };
+          }}
+          onTouchMove={(e) => {
+            if (!multi || !gestureRef.current?.active || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - gestureRef.current.startX;
+            const dy = e.touches[0].clientY - gestureRef.current.startY;
+            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+              gestureRef.current.moved = true;
+              setDragOffsetX(Math.max(-110, Math.min(110, dx * 0.55)));
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (!multi || !gestureRef.current?.active) return;
+            const endX = e.changedTouches[0]?.clientX ?? gestureRef.current.startX;
+            const dx = endX - gestureRef.current.startX;
+            gestureRef.current.active = false;
+            setDragOffsetX(0);
+            if (Math.abs(dx) >= 36) {
+              if (dx < 0) goNext();
+              else goPrev();
+            }
+            setTimeout(() => {
+              if (gestureRef.current) gestureRef.current.moved = false;
+            }, 80);
+          }}
+          onPointerDown={(e) => {
+            if (!multi || e.pointerType === "touch") return;
+            gestureRef.current = {
+              startX: e.clientX,
+              startY: e.clientY,
+              moved: false,
+              active: true,
+            };
+          }}
+          onPointerMove={(e) => {
+            if (!multi || e.pointerType === "touch" || !gestureRef.current?.active) return;
+            const dx = e.clientX - gestureRef.current.startX;
+            const dy = e.clientY - gestureRef.current.startY;
+            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+              gestureRef.current.moved = true;
+              setDragOffsetX(Math.max(-110, Math.min(110, dx * 0.55)));
+            }
+          }}
+          onPointerUp={(e) => {
+            if (!multi || e.pointerType === "touch" || !gestureRef.current?.active) return;
+            const dx = e.clientX - gestureRef.current.startX;
+            gestureRef.current.active = false;
+            setDragOffsetX(0);
+            if (Math.abs(dx) >= 38) {
+              if (dx < 0) goNext();
+              else goPrev();
+            }
+            setTimeout(() => {
+              if (gestureRef.current) gestureRef.current.moved = false;
+            }, 80);
+          }}
+          aria-label={`Perbesar ${current.label}${
+            multi ? " (geser foto kiri atau kanan untuk berpindah)" : ""
+          }`}
         >
           {isCurrentFailed ? (
             <SeismicMediaFallback label={current.label} caption={current.caption} />
@@ -181,7 +277,13 @@ export function MediaViewerSection({
             <img
               src={current.src}
               alt={current.caption || current.label}
+              draggable={false}
               referrerPolicy="no-referrer"
+              style={
+                dragOffsetX !== 0
+                  ? { transform: `translateX(${dragOffsetX}px)` }
+                  : undefined
+              }
               onError={() =>
                 setFailedMap((prev) => ({
                   ...prev,
@@ -190,13 +292,31 @@ export function MediaViewerSection({
               }
             />
           )}
-          <span className="viewer__hint">
-            <RoneIcon name="expand" />
-            Perbesar
-          </span>
-        </button>
-        <p className="viewer__meta">{current.caption}</p>
-        {valid.length > 1 ? (
+          <div className="viewer__stage-bar">
+            <span className="viewer__swipe-badge">
+              {multi ? `${safeIdx + 1}/${valid.length} · ${current.label}` : current.label}
+            </span>
+            {multi ? (
+              <span className="viewer__dots" aria-hidden="true">
+                {valid.map((item, idx) => (
+                  <span
+                    key={item.label}
+                    className={`viewer__dot${idx === safeIdx ? " is-active" : ""}`}
+                  />
+                ))}
+              </span>
+            ) : null}
+            <span className="viewer__hint">
+              <RoneIcon name="expand" />
+              Perbesar
+            </span>
+          </div>
+        </div>
+        <p className="viewer__meta">
+          {current.caption}
+          {multi ? " · Geser foto kiri/kanan" : ""}
+        </p>
+        {multi ? (
           <div className="viewer__tabs" role="tablist" aria-label={title}>
             {valid.map((item, idx) => {
               const isTabFailed = Boolean(failedMap[item.src]);
@@ -643,19 +763,53 @@ export function RoneLightbox({
 }) {
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
+  const swipeRef = React.useRef<{ startX: number; startY: number; active: boolean } | null>(
+    null
+  );
 
   useEffect(() => {
     if (state) {
       setIdx(state.index);
       setZoom(1);
+      setDragOffsetX(0);
     }
   }, [state]);
+
+  useEffect(() => {
+    if (!state || !state.items.length) return;
+    const len = state.items.length;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowLeft" && len > 1) {
+        setZoom(1);
+        setIdx((i) => (i - 1 + len) % len);
+      } else if (e.key === "ArrowRight" && len > 1) {
+        setZoom(1);
+        setIdx((i) => (i + 1) % len);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state, onClose]);
 
   if (!state || !state.items.length) return null;
   const current = state.items[idx] || state.items[0];
   const multi = state.items.length > 1;
   const isCurrentFailed = Boolean(failedMap[current.src]);
+
+  const goPrev = () => {
+    setZoom(1);
+    setDragOffsetX(0);
+    setIdx((i) => (i - 1 + state.items.length) % state.items.length);
+  };
+  const goNext = () => {
+    setZoom(1);
+    setDragOffsetX(0);
+    setIdx((i) => (i + 1) % state.items.length);
+  };
 
   return (
     <div
@@ -663,6 +817,9 @@ export function RoneLightbox({
       role="dialog"
       aria-modal="true"
       aria-labelledby="lb-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="lightbox__bar">
         <div className="lightbox__heading">
@@ -670,14 +827,14 @@ export function RoneLightbox({
             {current.label}
           </h2>
           {multi ? (
-            <span className="lightbox__count">
+            <span className="lightbox__count mono">
               {idx + 1} / {state.items.length}
             </span>
           ) : null}
         </div>
         <div className="lightbox__tools">
           <button
-            className="icon-btn"
+            className="icon-btn lightbox__tool-btn"
             type="button"
             aria-label="Perkecil"
             disabled={zoom <= 1}
@@ -686,7 +843,7 @@ export function RoneLightbox({
             <RoneIcon name="zoom-out" />
           </button>
           <button
-            className="icon-btn"
+            className="icon-btn lightbox__tool-btn"
             type="button"
             aria-label="Perbesar"
             disabled={zoom >= 3}
@@ -695,7 +852,7 @@ export function RoneLightbox({
             <RoneIcon name="zoom-in" />
           </button>
           <button
-            className="icon-btn"
+            className="icon-btn lightbox__tool-btn"
             type="button"
             aria-label="Tutup"
             onClick={onClose}
@@ -708,6 +865,59 @@ export function RoneLightbox({
       <div
         className="lightbox__stage"
         onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
+        onTouchStart={(e) => {
+          if (!multi || zoom > 1 || e.touches.length !== 1) return;
+          swipeRef.current = {
+            startX: e.touches[0].clientX,
+            startY: e.touches[0].clientY,
+            active: true,
+          };
+        }}
+        onTouchMove={(e) => {
+          if (!multi || zoom > 1 || !swipeRef.current?.active || e.touches.length !== 1)
+            return;
+          const dx = e.touches[0].clientX - swipeRef.current.startX;
+          const dy = e.touches[0].clientY - swipeRef.current.startY;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            setDragOffsetX(Math.max(-140, Math.min(140, dx * 0.6)));
+          }
+        }}
+        onTouchEnd={(e) => {
+          if (!multi || zoom > 1 || !swipeRef.current?.active) return;
+          const endX = e.changedTouches[0]?.clientX ?? swipeRef.current.startX;
+          const dx = endX - swipeRef.current.startX;
+          swipeRef.current = null;
+          setDragOffsetX(0);
+          if (Math.abs(dx) >= 44) {
+            if (dx < 0) goNext();
+            else goPrev();
+          }
+        }}
+        onPointerDown={(e) => {
+          if (!multi || zoom > 1 || e.pointerType === "touch") return;
+          swipeRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            active: true,
+          };
+        }}
+        onPointerMove={(e) => {
+          if (!multi || zoom > 1 || e.pointerType === "touch" || !swipeRef.current?.active)
+            return;
+          const dx = e.clientX - swipeRef.current.startX;
+          setDragOffsetX(Math.max(-140, Math.min(140, dx * 0.6)));
+        }}
+        onPointerUp={(e) => {
+          if (!multi || zoom > 1 || e.pointerType === "touch" || !swipeRef.current?.active)
+            return;
+          const dx = e.clientX - swipeRef.current.startX;
+          swipeRef.current = null;
+          setDragOffsetX(0);
+          if (Math.abs(dx) >= 48) {
+            if (dx < 0) goNext();
+            else goPrev();
+          }
+        }}
       >
         {isCurrentFailed ? (
           <SeismicMediaFallback label={current.label} caption={current.caption} />
@@ -715,7 +925,10 @@ export function RoneLightbox({
           <img
             src={current.src}
             alt={current.caption || current.label}
-            style={{ transform: `scale(${zoom})` }}
+            draggable={false}
+            style={{
+              transform: `translateX(${dragOffsetX}px) scale(${zoom})`,
+            }}
             referrerPolicy="no-referrer"
             onError={() =>
               setFailedMap((prev) => ({
@@ -725,36 +938,36 @@ export function RoneLightbox({
             }
           />
         )}
-        {multi ? (
-          <>
-            <button
-              className="lightbox__nav lightbox__nav--prev icon-btn"
-              type="button"
-              aria-label="Gambar sebelumnya"
-              onClick={() => {
-                setZoom(1);
-                setIdx((i) => (i - 1 + state.items.length) % state.items.length);
-              }}
-            >
-              <RoneIcon name="chevron-left" />
-            </button>
-            <button
-              className="lightbox__nav lightbox__nav--next icon-btn"
-              type="button"
-              aria-label="Gambar berikutnya"
-              onClick={() => {
-                setZoom(1);
-                setIdx((i) => (i + 1) % state.items.length);
-              }}
-            >
-              <RoneIcon name="chevron-right" />
-            </button>
-          </>
-        ) : null}
       </div>
-      <p className="lightbox__hint">
-        Klik dua kali untuk memperbesar atau reset · gunakan tombol atas untuk kontrol zoom
-      </p>
+
+      <div className="lightbox__footer">
+        {multi ? (
+          <div className="lightbox__pills" role="tablist" aria-label="Pilih foto">
+            {state.items.map((item, i) => (
+              <button
+                key={item.label}
+                type="button"
+                role="tab"
+                aria-selected={i === idx ? "true" : "false"}
+                className={`lightbox__pill${i === idx ? " is-active" : ""}`}
+                onClick={() => {
+                  setZoom(1);
+                  setDragOffsetX(0);
+                  setIdx(i);
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <p className="lightbox__hint">
+          {multi
+            ? "Geser foto kiri/kanan untuk berpindah · Ketuk 2× untuk memperbesar"
+            : "Ketuk 2× untuk memperbesar atau reset ukuran gambar"}
+        </p>
+      </div>
     </div>
   );
 }
+
