@@ -3562,6 +3562,59 @@ export function GempaRoneApp({
                   </a>
                 </nav>
               </div>
+
+              <details className="seo-index-drawer">
+                <summary>
+                  <span>
+                    Indeks Pencarian Cepat: Gempa Hari Ini, Gempa Barusan, 1 Menit &amp; 2 Detik Lalu
+                  </span>
+                  <RoneIcon name="chevron-down" />
+                </summary>
+                <div className="seo-index-drawer__body">
+                  <p>
+                    <strong>Gempa Seismic Indonesia</strong> menyajikan informasi{" "}
+                    <strong>gempa hari ini</strong>, <strong>gempa barusan</strong>,{" "}
+                    <strong>gempa 2 detik lalu</strong>, <strong>gempa 1 menit lalu</strong>, dan{" "}
+                    <strong>gempa terbaru BMKG</strong> secara langsung dari jaringan sensor
+                    seismograf InaTEWS. Pantau titik episenter, kedalaman hiposenter, peta
+                    guncangan (ShakeMap MMI), serta status peringatan dini tsunami Indonesia.
+                  </p>
+                  <div className="seo-index-drawer__tags" role="list" aria-label="Pencarian cepat gempa populer">
+                    {[
+                      { label: "Gempa Hari Ini", tab: "home" as const, q: "" },
+                      { label: "Gempa Barusan (2 Detik Lalu)", tab: "realtime" as const, q: "" },
+                      { label: "Gempa 1 Menit Lalu", tab: "realtime" as const, q: "" },
+                      { label: "Gempa Terbaru BMKG", tab: "home" as const, q: "" },
+                      { label: "Gempa Dirasakan Barusan", tab: "felt" as const, q: "" },
+                      { label: "Gempa M5+ Terkini", tab: "significant" as const, q: "" },
+                      { label: "Info Tsunami Hari Ini", tab: "tsunami" as const, q: "" },
+                      { label: "Gempa Jawa Barat", tab: "realtime" as const, q: "Jawa Barat" },
+                      { label: "Gempa Banten & Jakarta", tab: "realtime" as const, q: "Banten" },
+                      { label: "Gempa Yogyakarta & Jateng", tab: "realtime" as const, q: "Yogyakarta" },
+                      { label: "Gempa Jawa Timur & Malang", tab: "realtime" as const, q: "Jawa Timur" },
+                      { label: "Gempa Bali & Lombok", tab: "realtime" as const, q: "Bali" },
+                      { label: "Gempa Sumatera", tab: "realtime" as const, q: "Sumatera" },
+                      { label: "Gempa Sulawesi", tab: "realtime" as const, q: "Sulawesi" },
+                      { label: "Gempa Maluku & Papua", tab: "realtime" as const, q: "Maluku" },
+                    ].map((tag) => (
+                      <button
+                        key={tag.label}
+                        type="button"
+                        role="listitem"
+                        className="seo-tag-chip"
+                        onClick={() => {
+                          if (tag.q) {
+                            setRtQuery(tag.q);
+                          }
+                          navigateTab(tag.tab);
+                        }}
+                      >
+                        {tag.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </footer>
           )}
         </div>

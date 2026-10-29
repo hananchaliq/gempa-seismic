@@ -5185,6 +5185,72 @@ body {
   padding: 0;
 }
 
+.seo-index-drawer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line-strong);
+}
+
+.seo-index-drawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  user-select: none;
+}
+
+.seo-index-drawer summary::-webkit-details-marker {
+  display: none;
+}
+
+.seo-index-drawer summary svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.seo-index-drawer[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.seo-index-drawer__body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.seo-index-drawer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.seo-tag-chip {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong);
+  background: var(--bg-sunken);
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.seo-tag-chip:hover {
+  background: var(--obsidian);
+  color: var(--obsidian-ink);
+  border-color: var(--obsidian);
+}
+
 /* Buttons, Pills, Pager, Toast, Helpers */
 .btn {
   display: inline-flex;
