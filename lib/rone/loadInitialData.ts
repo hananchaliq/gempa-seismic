@@ -2,10 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { InitialRonePayload } from "@/components/rone/GempaRoneApp";
 import {
+  bridgeOfficialQuakesIntoRealtime,
   fetchDirectBmkgFelt,
   fetchDirectBmkgLatest,
   fetchDirectBmkgRealtime,
   fetchDirectBmkgSignificant,
+  mergeEarthquakeLists,
   mergeRealtimeEvents,
   pickNewerEarthquake,
   pickNewerEarthquakeList,
@@ -17,11 +19,18 @@ const BROWSER_HEADERS: Record<string, string> = {
   Accept: "application/json",
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Cache-Control": "no-cache",
 };
 
 async function readJsonFixture<T>(filename: string, fallback: T): Promise<T> {
   try {
-    const filePath = path.join(process.cwd(), "public", "fixtures", "live-cache", filename);
+    const filePath = path.join(
+      process.cwd(),
+      "public",
+      "fixtures",
+      "live-cache",
+      filename
+    );
     const raw = await fs.readFile(filePath, "utf-8");
     return JSON.parse(raw) as T;
   } catch {
@@ -31,7 +40,7 @@ async function readJsonFixture<T>(filename: string, fallback: T): Promise<T> {
 
 async function fetchRoneUpstream<T>(
   upstreamPath: string,
-  timeoutMs = 1100
+  timeoutMs = 1500
 ): Promise<T | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -57,8 +66,7 @@ interface ServerSnapshotCache {
 }
 
 let snapshotCache: ServerSnapshotCache | null = null;
-let backgroundRefreshPromise: Promise<void> | null = null;
-const SNAPSHOT_TTL_MS = 15_000;
+const SNAPSHOT_TTL_MS = 5_000;
 
 async function fetchLiveSnapshot(
   baseFallback: InitialRonePayload
@@ -74,23 +82,43 @@ async function fetchLiveSnapshot(
     fetchDirectBmkgRealtime(250, 0),
     fetchDirectBmkgFelt(),
     fetchDirectBmkgSignificant(),
-    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami", 950),
+    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami", 1200),
   ]);
 
-  const latest = pickNewerEarthquake(directLatest, baseFallback.latest);
+  let pickedFelt = pickNewerEarthquakeList(directFelt, baseFallback.felt);
+  let pickedSig = pickNewerEarthquakeList(directSig, baseFallback.significant);
+
+  // Pick the freshest official earthquake across latest, felt[0], and significant[0]
+  let latest = pickNewerEarthquake(directLatest, baseFallback.latest);
+  if (pickedFelt[0]) {
+    latest = pickNewerEarthquake(latest, pickedFelt[0]);
+  }
+  if (pickedSig[0]) {
+    latest = pickNewerEarthquake(latest, pickedSig[0]);
+  }
+
+  // Ensure a brand-new latest felt/M5+ quake is also reflected at the top of felt / significant lists
+  if (latest?.felt) {
+    pickedFelt = mergeEarthquakeLists([latest], pickedFelt, 45);
+  }
+  if (latest && latest.magnitude >= 5.0) {
+    pickedSig = mergeEarthquakeLists([latest], pickedSig, 45);
+  }
+
+  const felt = pickedFelt.length ? pickedFelt : baseFallback.felt;
+  const significant = pickedSig.length ? pickedSig : baseFallback.significant;
 
   const mergedRealtime = mergeRealtimeEvents(
     directRealtime,
     baseFallback.realtime,
     250
   );
-  const realtime = mergedRealtime.length ? mergedRealtime : baseFallback.realtime;
-
-  const pickedFelt = pickNewerEarthquakeList(directFelt, baseFallback.felt);
-  const felt = pickedFelt.length ? pickedFelt : baseFallback.felt;
-
-  const pickedSig = pickNewerEarthquakeList(directSig, baseFallback.significant);
-  const significant = pickedSig.length ? pickedSig : baseFallback.significant;
+  const bridgedRealtime = bridgeOfficialQuakesIntoRealtime(
+    mergedRealtime.length ? mergedRealtime : baseFallback.realtime,
+    [latest, felt[0], significant[0]],
+    250
+  );
+  const realtime = bridgedRealtime.length ? bridgedRealtime : baseFallback.realtime;
 
   const tsunami =
     roneTsunamiWrap?.data && roneTsunamiWrap.data.length
@@ -151,42 +179,25 @@ async function loadFastLocalBase(): Promise<InitialRonePayload> {
   };
 }
 
-function triggerBackgroundRefresh(base: InitialRonePayload) {
-  if (backgroundRefreshPromise) return;
-  backgroundRefreshPromise = fetchLiveSnapshot(base)
-    .then((fresh) => {
-      if (fresh.isLive || !snapshotCache) {
-        snapshotCache = {
-          payload: fresh.payload,
-          updatedAt: Date.now(),
-          isLive: fresh.isLive,
-        };
-      }
-    })
-    .catch(() => {})
-    .finally(() => {
-      backgroundRefreshPromise = null;
-    });
-}
-
 export async function loadInitialRoneData(): Promise<InitialRonePayload> {
   const now = Date.now();
-  if (snapshotCache && snapshotCache.isLive) {
-    if (now - snapshotCache.updatedAt > SNAPSHOT_TTL_MS) {
-      triggerBackgroundRefresh(snapshotCache.payload);
-    }
+  if (
+    snapshotCache &&
+    snapshotCache.isLive &&
+    now - snapshotCache.updatedAt <= SNAPSHOT_TTL_MS
+  ) {
     return {
       ...snapshotCache.payload,
       referenceNowMs: now,
     };
   }
 
-  const localBase = await loadFastLocalBase();
+  const base = snapshotCache?.payload || (await loadFastLocalBase());
 
-  // Wait up to 2400ms for direct BMKG InaTEWS live feeds (~400-750ms typical) so initial page load always shows real-time data
+  // Always await live BMKG feeds (up to 2500ms) when cache is older than 5s so serverless never serves stale snapshots
   const raceResult = await Promise.race([
-    fetchLiveSnapshot(localBase).catch(() => null),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2400)),
+    fetchLiveSnapshot(base).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
   ]);
 
   if (raceResult) {
@@ -198,7 +209,8 @@ export async function loadInitialRoneData(): Promise<InitialRonePayload> {
     return raceResult.payload;
   }
 
-  triggerBackgroundRefresh(localBase);
-  return localBase;
+  return {
+    ...base,
+    referenceNowMs: now,
+  };
 }
-

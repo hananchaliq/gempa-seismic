@@ -31,10 +31,15 @@ import {
   weeklyBuckets,
 } from "@/lib/rone/format";
 import {
+  bridgeOfficialQuakesIntoRealtime,
+  fetchDirectBmkgFelt,
   fetchDirectBmkgLatest,
   fetchDirectBmkgRealtime,
+  fetchDirectBmkgSignificant,
+  mergeEarthquakeLists,
   mergeRealtimeEvents,
   pickNewerEarthquake,
+  pickNewerEarthquakeList,
 } from "@/lib/rone/bmkgLiveDirect";
 import {
   FactsList,
@@ -109,7 +114,7 @@ const TAB_TITLES: Record<RoneTabKey, [string, string]> = {
 };
 
 const DAY_MS = 86_400_000;
-const AUTO_POLL_SECONDS = 30;
+const AUTO_POLL_SECONDS = 15;
 
 export interface InitialRonePayload {
   latest: RoneEarthquake | null;
@@ -350,7 +355,7 @@ export function GempaRoneApp({
     } catch {}
   }, []);
 
-  // Real-time refresh of live endpoints (runs immediately on mount, every 30s, or on manual click)
+  // Real-time refresh of live endpoints (runs immediately on mount, every 15s, on tab focus, or on manual click)
   const refreshLiveFeeds = useCallback(
     async (manual = false) => {
       setIsSyncing(true);
@@ -365,6 +370,8 @@ export function GempaRoneApp({
           tsRes,
           directLatest,
           directRt,
+          directFelt,
+          directSig,
         ] = await Promise.all([
           fetch(`/api/v1/earthquakes/latest${qs}`, { cache: "no-store" }).catch(() => null),
           fetch(`/api/v1/earthquakes/realtime?limit=300&fresh=1&t=${ts}`, {
@@ -377,24 +384,57 @@ export function GempaRoneApp({
           fetch(`/api/v1/tsunami${qs}`, { cache: "no-store" }).catch(() => null),
           fetchDirectBmkgLatest().catch(() => null),
           fetchDirectBmkgRealtime(300, 0).catch(() => []),
+          fetchDirectBmkgFelt().catch(() => []),
+          fetchDirectBmkgSignificant().catch(() => []),
         ]);
+
+        let apiFelt: RoneEarthquake[] = [];
+        if (feltRes?.ok) {
+          const j = await feltRes.json().catch(() => null);
+          if (Array.isArray(j?.data)) apiFelt = j.data;
+        }
+        let bestFelt = pickNewerEarthquakeList(directFelt, apiFelt);
+
+        let apiSig: RoneEarthquake[] = [];
+        if (sigRes?.ok) {
+          const j = await sigRes.json().catch(() => null);
+          if (Array.isArray(j?.data)) apiSig = j.data;
+        }
+        let bestSig = pickNewerEarthquakeList(directSig, apiSig);
 
         let apiLatest: RoneEarthquake | null = null;
         if (latestRes?.ok) {
           const j = await latestRes.json().catch(() => null);
           if (j?.data) apiLatest = j.data;
         }
-        const bestLatest = pickNewerEarthquake(apiLatest, directLatest);
+        let bestLatest = pickNewerEarthquake(directLatest, apiLatest);
+        if (bestFelt[0]) bestLatest = pickNewerEarthquake(bestLatest, bestFelt[0]);
+        if (bestSig[0]) bestLatest = pickNewerEarthquake(bestLatest, bestSig[0]);
+
         if (bestLatest) {
           setLatest(bestLatest);
+          if (bestLatest.felt) {
+            bestFelt = mergeEarthquakeLists([bestLatest], bestFelt, 45);
+          }
+          if (bestLatest.magnitude >= 5.0) {
+            bestSig = mergeEarthquakeLists([bestLatest], bestSig, 45);
+          }
         }
+
+        if (bestFelt.length > 0) setFeltList(bestFelt);
+        if (bestSig.length > 0) setSignificantList(bestSig);
 
         let apiRt: RoneRealtimeEvent[] = [];
         if (rtRes?.ok) {
           const j = await rtRes.json().catch(() => null);
           if (Array.isArray(j?.data)) apiRt = j.data;
         }
-        const mergedRt = mergeRealtimeEvents(directRt, apiRt, 300);
+        const combinedRt = mergeRealtimeEvents(directRt, apiRt, 300);
+        const mergedRt = bridgeOfficialQuakesIntoRealtime(
+          combinedRt,
+          [bestLatest, bestFelt[0], bestSig[0]],
+          300
+        );
         if (mergedRt.length > 0) {
           const newest: RoneRealtimeEvent = mergedRt[0];
           if (
@@ -412,14 +452,6 @@ export function GempaRoneApp({
           setRealtime(mergedRt);
         }
 
-        if (feltRes?.ok) {
-          const j = await feltRes.json().catch(() => null);
-          if (Array.isArray(j?.data) && j.data.length > 0) setFeltList(j.data);
-        }
-        if (sigRes?.ok) {
-          const j = await sigRes.json().catch(() => null);
-          if (Array.isArray(j?.data) && j.data.length > 0) setSignificantList(j.data);
-        }
         if (tsRes?.ok) {
           const j = await tsRes.json().catch(() => null);
           if (Array.isArray(j?.data) && j.data.length > 0) setTsunamiList(j.data);
@@ -445,7 +477,7 @@ export function GempaRoneApp({
     [showToast, soundEnabled]
   );
 
-  // Immediate live sync on mount + 15s relative clock & 30s auto-poll
+  // Immediate live sync on mount + 15s auto-poll + instant sync on tab focus/visibility
   useEffect(() => {
     const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
     const isAuditBot = /Chrome-Lighthouse|PageSpeed|GTmetrix/i.test(ua);
@@ -453,7 +485,7 @@ export function GempaRoneApp({
       () => {
         refreshLiveFeeds(false);
       },
-      isAuditBot ? 12000 : 80
+      isAuditBot ? 12000 : 60
     );
 
     const pollTimer = setInterval(() => {
@@ -462,12 +494,22 @@ export function GempaRoneApp({
 
     const clockTimer = setInterval(() => {
       setNowMs(Date.now());
-    }, 15000);
+    }, 10000);
+
+    const onVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible" && !isAuditBot) {
+        refreshLiveFeeds(false);
+      }
+    };
+    window.addEventListener("focus", onVisibilityOrFocus);
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
 
     return () => {
       clearTimeout(initialSyncTimer);
       clearInterval(pollTimer);
       clearInterval(clockTimer);
+      window.removeEventListener("focus", onVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
     };
   }, [refreshLiveFeeds]);
 

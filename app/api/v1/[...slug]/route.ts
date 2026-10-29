@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+  bridgeOfficialQuakesIntoRealtime,
   fetchDirectBmkgFelt,
   fetchDirectBmkgLatest,
   fetchDirectBmkgRealtime,
   fetchDirectBmkgSignificant,
+  mergeEarthquakeLists,
   mergeRealtimeEvents,
   pickNewerEarthquake,
   pickNewerEarthquakeList,
@@ -37,7 +39,7 @@ interface CacheEntry {
 }
 
 const memoryCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 12_000;
+const CACHE_TTL_MS = 4_000;
 
 function getFallbackFile(slugPath: string): string | null {
   if (slugPath === "earthquakes/latest") return "latest.json";
@@ -323,11 +325,15 @@ export async function GET(
 
   // 4. Multi-Source Live Handlers for Core Dynamic Feeds (Guaranteed Live on Vercel & Local)
   if (slugPath === "earthquakes/latest") {
-    const [roneWrap, directLatest] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake | null }>("earthquakes/latest", 900),
+    const [roneWrap, directLatest, directFelt, directSig] = await Promise.all([
+      fetchRoneJson<{ data: RoneEarthquake | null }>("earthquakes/latest", 1800),
       fetchDirectBmkgLatest(),
+      fetchDirectBmkgFelt(),
+      fetchDirectBmkgSignificant(),
     ]);
-    const latest = pickNewerEarthquake(roneWrap?.data, directLatest);
+    let latest = pickNewerEarthquake(directLatest, roneWrap?.data);
+    if (directFelt[0]) latest = pickNewerEarthquake(latest, directFelt[0]);
+    if (directSig[0]) latest = pickNewerEarthquake(latest, directSig[0]);
     if (latest) {
       const payload = JSON.stringify({
         data: latest,
@@ -349,14 +355,24 @@ export async function GET(
   if (slugPath === "earthquakes/realtime") {
     const minMag = Number(req.nextUrl.searchParams.get("min_magnitude") || "0");
     const limit = Number(req.nextUrl.searchParams.get("limit") || "250");
-    const [roneWrap, directList] = await Promise.all([
-      fetchRoneJson<{ data: RoneRealtimeEvent[] }>(
-        `earthquakes/realtime?limit=${Math.max(limit, 250)}`,
-        900
-      ),
-      fetchDirectBmkgRealtime(Math.max(limit, 250), 0),
-    ]);
-    const merged = mergeRealtimeEvents(directList, roneWrap?.data || [], 350)
+    const [roneWrap, directList, directLatest, directFelt, directSig] =
+      await Promise.all([
+        fetchRoneJson<{ data: RoneRealtimeEvent[] }>(
+          `earthquakes/realtime?limit=${Math.max(limit, 250)}`,
+          1800
+        ),
+        fetchDirectBmkgRealtime(Math.max(limit, 250), 0),
+        fetchDirectBmkgLatest(),
+        fetchDirectBmkgFelt(),
+        fetchDirectBmkgSignificant(),
+      ]);
+    const combinedRt = mergeRealtimeEvents(directList, roneWrap?.data || [], 350);
+    const bridged = bridgeOfficialQuakesIntoRealtime(
+      combinedRt,
+      [directLatest, directFelt[0], directSig[0]],
+      350
+    );
+    const merged = bridged
       .filter((e) => e.magnitude >= minMag)
       .slice(0, limit);
 
@@ -379,11 +395,15 @@ export async function GET(
   }
 
   if (slugPath === "earthquakes/felt") {
-    const [roneWrap, directFelt] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/felt", 900),
+    const [roneWrap, directFelt, directLatest] = await Promise.all([
+      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/felt", 1800),
       fetchDirectBmkgFelt(),
+      fetchDirectBmkgLatest(),
     ]);
-    const felt = pickNewerEarthquakeList(directFelt, roneWrap?.data || []);
+    let felt = pickNewerEarthquakeList(directFelt, roneWrap?.data || []);
+    if (directLatest?.felt) {
+      felt = mergeEarthquakeLists([directLatest], felt, 45);
+    }
     if (felt.length > 0) {
       const payload = JSON.stringify({
         data: felt,
@@ -403,11 +423,15 @@ export async function GET(
   }
 
   if (slugPath === "earthquakes/significant") {
-    const [roneWrap, directSig] = await Promise.all([
-      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/significant", 900),
+    const [roneWrap, directSig, directLatest] = await Promise.all([
+      fetchRoneJson<{ data: RoneEarthquake[] }>("earthquakes/significant", 1800),
       fetchDirectBmkgSignificant(),
+      fetchDirectBmkgLatest(),
     ]);
-    const significant = pickNewerEarthquakeList(directSig, roneWrap?.data || []);
+    let significant = pickNewerEarthquakeList(directSig, roneWrap?.data || []);
+    if (directLatest && directLatest.magnitude >= 5.0) {
+      significant = mergeEarthquakeLists([directLatest], significant, 45);
+    }
     if (significant.length > 0) {
       const payload = JSON.stringify({
         data: significant,
