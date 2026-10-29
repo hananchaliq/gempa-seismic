@@ -2434,30 +2434,25 @@ export function GempaRoneApp({
             {/* ==================== 5. TSUNAMI (/tsunami/) ==================== */}
             {activeTab === "tsunami" && (
               <div className="page-stack">
-                <section className="card" aria-labelledby="levels-heading">
-                  <div className="card__head">
-                    <div>
-                      <h2 id="levels-heading">Matriks Status Peringatan Dini Tsunami InaTEWS</h2>
-                      <span className="hint">
-                        Riwayat resmi peringatan dini tsunami BMKG: zona terdampak, pengamatan tinggi muka laut, dan kronologi buletin PD-1 hingga PD-4.
-                      </span>
-                    </div>
-                    <span className="pill pill--obsidian">
-                      {fmtNumber(tsunamiList.length)} Kejadian Tercatat
+                <section className="card tsunami-legend-card" aria-labelledby="levels-heading">
+                  <div className="tsunami-legend-card__head pb-2">
+                    <h2 id="levels-heading">Level Peringatan Dini Tsunami</h2>
+                    <span className="pill pill--obsidian nowrap">
+                      {fmtNumber(tsunamiList.length)} Kejadian
                     </span>
                   </div>
                   <ul className="level-legend">
                     <li>
                       <span className="pill pill--awas">AWAS</span>
-                      <span>Perkiraan tinggi &gt; 3 m — evakuasi menyeluruh</span>
+                      <span>Tinggi &gt; 3 m · Evakuasi menyeluruh</span>
                     </li>
                     <li>
                       <span className="pill pill--siaga">SIAGA</span>
-                      <span>0,5–3 m — evakuasi menuju tempat tinggi</span>
+                      <span>Tinggi 0,5–3 m · Evakuasi ke tempat tinggi</span>
                     </li>
                     <li>
                       <span className="pill pill--waspada">WASPADA</span>
-                      <span>&lt; 0,5 m — jauhi pantai dan tepi sungai</span>
+                      <span>Tinggi &lt; 0,5 m · Jauhi pantai &amp; tepi sungai</span>
                     </li>
                   </ul>
                 </section>
@@ -2497,12 +2492,8 @@ export function GempaRoneApp({
                         <header className="tsunami-event__head">
                           <div className="tsunami-event__title-row">
                             <MagBadge magnitude={ev.magnitude} size="lg" />
-                            <div>
-                              <h2 className="tsunami-event__title" id={`ts-${index}`}>
-                                {ev.region}
-                              </h2>
-                              <p className="small muted">{fmtLong(ev.origin_time)}</p>
-                              <div className="row mt-3">
+                            <div className="tsunami-event__intro">
+                              <div className="tsunami-event__badges">
                                 <span
                                   className={`pill${ev.ended ? "" : " pill--signal"}`}
                                 >
@@ -2516,45 +2507,52 @@ export function GempaRoneApp({
                                   </span>
                                 ) : null}
                               </div>
+                              <h2 className="tsunami-event__title" id={`ts-${index}`}>
+                                {ev.region}
+                              </h2>
+                              <p className="tsunami-event__date">
+                                {fmtDateTime(ev.origin_time)}
+                              </p>
                             </div>
                           </div>
                           <FactsList
-                            extraClass="facts--4"
+                            extraClass="facts--4 tsunami-facts"
                             rows={[
                               [
-                                "Tinggi teramati maks.",
+                                "Tinggi Maks.",
                                 ev.max_wave_height_m != null
                                   ? `${fmtDecimal(ev.max_wave_height_m)} m`
                                   : "–",
                               ],
                               ["Kedalaman", fmtDepth(ev.depth_km)],
                               ["Koordinat", fmtCoords(ev.latitude, ev.longitude)],
-                              ["Buletin", fmtNumber(ev.bulletins.length)],
+                              ["Buletin", `${fmtNumber(ev.bulletins.length)} tahap`],
                             ]}
                           />
                         </header>
 
                         <div className="tsunami-event__grid">
-                          <section>
+                          <section className="tsunami-event__col">
                             <h3>Kronologi buletin</h3>
                             <ol className="timeline">
                               {ev.bulletins.map((b) => (
                                 <li key={b.event_id + b.code}>
-                                  <span className="timeline__code">{b.code}</span>
-                                  <span className="timeline__time">
-                                    {fmtDateTime(b.issued_at)}
-                                  </span>
+                                  <div className="timeline__top">
+                                    <span className="timeline__code">{b.code}</span>
+                                    <span className="timeline__time">
+                                      {fmtDateTime(b.issued_at)}
+                                    </span>
+                                  </div>
                                   <p className="timeline__text">
-                                    <strong>{bulletinLabel(b.code)}</strong>
-                                    {bulletinLabel(b.code) ? " — " : ""}M{" "}
-                                    {fmtMag(b.magnitude)}
+                                    <strong>{bulletinLabel(b.code) || "Buletin"}</strong>
+                                    <span> · M {fmtMag(b.magnitude)}</span>
                                   </p>
                                 </li>
                               ))}
                             </ol>
                           </section>
 
-                          <section>
+                          <section className="tsunami-event__col">
                             {zones.length ? (
                               <>
                                 <h3>Zona peringatan · {fmtNumber(zones.length)} wilayah</h3>
@@ -2579,7 +2577,7 @@ export function GempaRoneApp({
                                           }
                                         />
                                       </span>
-                                      <span className="num mono">
+                                      <span className="num mono level-bar__count">
                                         {fmtNumber(counts[lv])}
                                       </span>
                                     </div>
@@ -2588,38 +2586,41 @@ export function GempaRoneApp({
 
                                 <details className="disclosure" open>
                                   <summary>
-                                    <span>Daftar wilayah</span>
+                                    <span>Daftar wilayah ({fmtNumber(zones.length)})</span>
                                     <RoneIcon name="chevronDown" />
                                   </summary>
-                                  <div className="table-wrap">
-                                    <table className="table table--structured">
+                                  <div className="table-wrap tsunami-table-wrap">
+                                    <table className="table table--structured tsunami-table">
                                       <thead>
                                         <tr>
                                           <th scope="col">Status</th>
                                           <th scope="col">Wilayah</th>
-                                          <th scope="col">Provinsi</th>
+                                          <th scope="col" className="col-prov">Provinsi</th>
                                           <th scope="col" className="num">
-                                            Perkiraan tiba
+                                            Tiba (WIB)
                                           </th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {zones.map((z, zIdx) => (
                                           <tr key={`${z.district}-${zIdx}`}>
-                                            <td>
+                                            <td className="tsunami-td-status">
                                               <span
                                                 className={`pill pill--${z.level.toLowerCase()}`}
                                               >
                                                 {z.level}
                                               </span>
                                             </td>
-                                            <td>
+                                            <td className="tsunami-td-region">
                                               <strong>{z.district}</strong>
+                                              <span className="tsunami-mobile-prov">
+                                                {z.province}
+                                              </span>
                                             </td>
-                                            <td>{z.province}</td>
+                                            <td className="col-prov">{z.province}</td>
                                             <td className="num mono nowrap">
                                               {z.estimated_arrival
-                                                ? fmtDateTime(z.estimated_arrival)
+                                                ? fmtTimeOnly(z.estimated_arrival).replace(/\s*WIB$/i, "")
                                                 : "–"}
                                             </td>
                                           </tr>
@@ -2639,13 +2640,12 @@ export function GempaRoneApp({
                               <details className="disclosure" open={index === 0}>
                                 <summary>
                                   <span>
-                                    Pengamatan tsunami ·{" "}
-                                    {fmtNumber(obsBulletin.observations.length)} lokasi
+                                    Pengamatan tsunami ({fmtNumber(obsBulletin.observations.length)} lokasi)
                                   </span>
                                   <RoneIcon name="chevronDown" />
                                 </summary>
-                                <div className="table-wrap">
-                                  <table className="table table--structured">
+                                <div className="table-wrap tsunami-table-wrap">
+                                  <table className="table table--structured tsunami-table">
                                     <thead>
                                       <tr>
                                         <th scope="col">Lokasi</th>
@@ -2653,7 +2653,7 @@ export function GempaRoneApp({
                                           Tinggi
                                         </th>
                                         <th scope="col" className="num">
-                                          Waktu (WIB)
+                                          Waktu
                                         </th>
                                       </tr>
                                     </thead>
@@ -2662,7 +2662,7 @@ export function GempaRoneApp({
                                         .sort((a, b) => (b.height_m ?? 0) - (a.height_m ?? 0))
                                         .map((o, oIdx) => (
                                           <tr key={`${o.location}-${oIdx}`}>
-                                            <td>
+                                            <td className="tsunami-td-region">
                                               <strong>{o.location}</strong>
                                             </td>
                                             <td className="num mono nowrap">
@@ -2670,9 +2670,9 @@ export function GempaRoneApp({
                                             </td>
                                             <td className="num mono nowrap">
                                               {o.observed_at
-                                                ? fmtDateTime(o.observed_at)
+                                                ? fmtTimeOnly(o.observed_at).replace(/\s*WIB$/i, "")
                                                 : o.time
-                                                  ? fmtTimeOnly(o.time)
+                                                  ? fmtTimeOnly(o.time).replace(/\s*WIB$/i, "")
                                                   : "–"}
                                             </td>
                                           </tr>
@@ -2683,7 +2683,7 @@ export function GempaRoneApp({
                               </details>
                             ) : null}
 
-                            <div className="mt-5">
+                            <div className="mt-4">
                               <MediaViewerSection
                                 title="Peta BMKG"
                                 items={[
@@ -2716,11 +2716,11 @@ export function GempaRoneApp({
 
                             {ev.instructions?.length ? (
                               <details className="disclosure">
-                                <summary>Arahan BMKG</summary>
-                                <ul
-                                  className="prose small"
-                                  style={{ padding: "0 var(--s-2) 0 var(--s-6)" }}
-                                >
+                                <summary>
+                                  <span>Arahan BMKG</span>
+                                  <RoneIcon name="chevronDown" />
+                                </summary>
+                                <ul className="prose small tsunami-instructions">
                                   {ev.instructions.map((inst, iIdx) => (
                                     <li key={iIdx}>{inst}</li>
                                   ))}
