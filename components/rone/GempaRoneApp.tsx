@@ -2436,7 +2436,7 @@ export function GempaRoneApp({
             {activeTab === "tsunami" && (
               <div className="page-stack">
                 <section className="card tsunami-legend-card" aria-labelledby="levels-heading">
-                  <div className="tsunami-legend-card__head">
+                  <div className="tsunami-legend-card__head pb-2">
                     <h2 id="levels-heading">Level Peringatan Dini Tsunami</h2>
                     <span className="pill pill--obsidian nowrap">
                       {fmtNumber(tsunamiList.length)} Kejadian
