@@ -1491,9 +1491,11 @@ body {
 
 @keyframes radialArcSweep {
   0% {
-    opacity: 0.65;
+    stroke-dasharray: 0 100;
+    opacity: 0.75;
   }
   100% {
+    stroke-dasharray: var(--arc-fill, 45) 100;
     opacity: 1;
   }
 }
@@ -3458,7 +3460,21 @@ body {
   border-radius: 7px 7px 3px 3px;
   background: var(--ink-3);
   opacity: 0.55;
-  transition: all 0.2s ease;
+  transform-origin: bottom center;
+  animation: chartBarRise 0.56s cubic-bezier(0.22, 1, 0.36, 1) var(--delay, 0ms) both;
+  transition:
+    background 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+@keyframes chartBarRise {
+  0% {
+    transform: scaleY(0.14);
+  }
+  100% {
+    transform: scaleY(1);
+  }
 }
 
 .chart__col.is-peak .chart__bar {
@@ -5619,3 +5635,79 @@ body {
   white-space: nowrap !important;
   border: 0 !important;
 }
+
+/* Lightweight GPU Micro-Animations (Zero CLS / Zero LCP Delay) */
+@keyframes capsuleSlideIn {
+  0% {
+    transform: translate3d(-8px, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.capsule-timeline__row {
+  animation: capsuleSlideIn 0.42s cubic-bezier(0.22, 1, 0.36, 1)
+    calc(var(--idx, 0) * 45ms) both;
+}
+
+@keyframes barFillGrow {
+  0% {
+    transform: scaleX(0.15);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+.obsidian-trio__bar > span,
+.level-bar__fill {
+  transform-origin: left center;
+  animation: barFillGrow 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes hypoWavePulse {
+  0% {
+    transform: scale(0.65);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.depth-svg__wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hypoWavePulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.tab-stage-enter {
+  animation: tabStageEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes tabStageEnter {
+  0% {
+    transform: translate3d(0, 6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial__arc,
+  .mag-gauge__arc,
+  .chart__bar,
+  .capsule-timeline__row,
+  .obsidian-trio__bar > span,
+  .level-bar__fill,
+  .depth-svg__wave,
+  .spline-wave-path,
+  .spline-pulse-ring,
+  .tab-stage-enter {
+    animation: none !important;
+  }
+}
+

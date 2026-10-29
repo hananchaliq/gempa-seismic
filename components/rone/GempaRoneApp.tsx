@@ -1008,17 +1008,17 @@ export function GempaRoneApp({
                   }`}
                   className="card bento-ref__timeline"
                   aria-labelledby="latest-title"
-                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0.92, y: 8, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="hero__top">
                     <motion.div
                       id="latest-dial"
                       key={`dial-${refreshCycle}-${activeHeroQuake?.event_id}`}
-                      initial={refreshCycle > 0 ? { scale: 0.9, opacity: 0.75 } : false}
+                      initial={{ scale: 0.92, opacity: 0.9 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.38 }}
+                      transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
                     >
                       {activeHeroQuake ? (
                         <MagDial magnitude={activeHeroQuake.magnitude} />
@@ -1185,9 +1185,9 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-label="Kurva magnitudo dan distribusi kedalaman"
-                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.34, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.34, delay: 0.03, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <SeismicMagnitudeSplineCard
                     events={realtime}
@@ -1206,8 +1206,8 @@ export function GempaRoneApp({
                 <motion.section
                   className="card card--obsidian bento-ref__spotlight"
                   aria-label="Peta episentrum dan kartu pantauan prioritas"
-                  initial={refreshCycle > 0 ? { opacity: 0.88, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.36, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="obsidian-card__head">
@@ -1293,8 +1293,8 @@ export function GempaRoneApp({
                   key={`recent-feed-${refreshCycle}`}
                   className="card bento-ref__files"
                   aria-labelledby="recent-heading"
-                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="files-card__head">
@@ -1368,8 +1368,8 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="summary-heading"
-                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.36, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {/* Top Summary Strip inside Equipe Card */}
@@ -1581,8 +1581,8 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="chart-heading"
-                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ duration: 0.36, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="card__head">

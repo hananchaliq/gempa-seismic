@@ -196,9 +196,9 @@ export function EpicenterDistanceBar({
   return (
     <motion.div
       key={`calc-${quake.event_id}-${refreshCycle}`}
-      initial={refreshCycle > 0 ? { opacity: 0.78, scale: 0.99 } : false}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0.92, y: 5, scale: 0.994 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       className="seismic-calc"
       role="region"
       aria-label="Kalkulator jarak episenter dan gelombang"
@@ -306,6 +306,7 @@ export function SeismicCapsuleTimeline({
             <div
               key={ev.event_id}
               className="capsule-timeline__row"
+              style={{ "--idx": idx } as React.CSSProperties}
             >
               <span className="capsule-timeline__time mono">{timeLabel}</span>
               <div className="capsule-timeline__track">
@@ -456,9 +457,9 @@ export function SeismicMagnitudeSplineCard({
   return (
     <motion.div
       key={`spline-${refreshCycle}-${windowSize}`}
-      initial={refreshCycle > 0 ? { opacity: 0.84, y: 4 } : false}
+      initial={{ opacity: 0.92, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="spline-widget"
     >
       <div className="spline-widget__head">
@@ -514,6 +515,7 @@ export function SeismicMagnitudeSplineCard({
         />
         <path
           d={primaryWave}
+          className="spline-wave-path"
           fill="none"
           stroke="var(--ink)"
           strokeWidth="2.4"
@@ -658,9 +660,9 @@ export function StackedQuickQuakesDeck({
   return (
     <motion.div
       key={`deck-${refreshCycle}`}
-      initial={refreshCycle > 0 ? { opacity: 0.85, y: 4 } : false}
+      initial={{ opacity: 0.92, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="quake-deck"
       role="region"
       aria-label="Kartu pantauan cepat gempa utama"
@@ -769,10 +771,10 @@ export function HypocenterDepthCrossSection({
 
   return (
     <motion.section
-      key={`depth-sec-${refreshCycle}`}
-      initial={refreshCycle > 0 ? { opacity: 0.85, y: 6 } : false}
+      key={`depth-sec-${refreshCycle}-${target.event_id}`}
+      initial={{ opacity: 0.92, y: 7 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className="card bento__depth"
       aria-labelledby="depth-cross-heading"
     >
