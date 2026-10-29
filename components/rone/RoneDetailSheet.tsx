@@ -34,7 +34,21 @@ export function resolveMediaUrl(src?: string | null): string | null {
   if (!src || typeof src !== "string") return null;
   const trimmed = src.trim();
   if (!trimmed) return null;
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+  if (trimmed.startsWith("data:")) {
+    return trimmed;
+  }
+  const mediaMatch = trimmed.match(/\/api\/v1\/media\/([^/?#]+)\/([^/?#]+)/);
+  if (mediaMatch) {
+    return `/api/v1/media/${mediaMatch[1]}/${mediaMatch[2]}`;
+  }
+  const bmkgShakemapMatch = trimmed.match(/\/(\d{14})\.mmi\.jpg$/i);
+  if (bmkgShakemapMatch) {
+    return `/api/v1/media/${bmkgShakemapMatch[1]}/shakemap`;
+  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/api/")) {
     return trimmed;
   }
   if (trimmed.startsWith("/")) {
@@ -47,10 +61,12 @@ function SeismicMediaFallback({
   label,
   caption,
   compact = false,
+  fullStage = false,
 }: {
   label: string;
   caption?: string;
   compact?: boolean;
+  fullStage?: boolean;
 }) {
   if (compact) {
     return (
@@ -66,11 +82,15 @@ function SeismicMediaFallback({
   }
 
   return (
-    <div className="viewer__fallback" role="img" aria-label={caption || label}>
+    <div
+      className={`viewer__fallback${fullStage ? " viewer__fallback--lightbox" : ""}`}
+      role="img"
+      aria-label={caption || label}
+    >
       <svg
         viewBox="0 0 640 360"
         className="viewer__fallback-svg"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMid meet"
         aria-hidden="true"
       >
         <defs>
@@ -158,45 +178,171 @@ export function MediaViewerSection({
     .filter((i): i is MediaItem => Boolean(i));
 
   const [activeIdx, setActiveIdx] = useState(0);
+  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
+  const [dragOffsetX, setDragOffsetX] = useState(0);
+  const gestureStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const didSwipeRef = React.useRef(false);
 
-  if (!valid.length) return null;
-  const safeIdx = Math.min(activeIdx, valid.length - 1);
+  const safeIdx = valid.length ? Math.min(activeIdx, valid.length - 1) : 0;
   const current = valid[safeIdx];
+
+  useEffect(() => {
+    if (!current || loadedMap[current.src] || failedMap[current.src]) return;
+    const timer = setTimeout(() => {
+      setFailedMap((prev) => (loadedMap[current.src] ? prev : { ...prev, [current.src]: true }));
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [current, loadedMap, failedMap]);
+
+  if (!valid.length || !current) return null;
   const isCurrentFailed = Boolean(failedMap[current.src]);
+  const multi = valid.length > 1;
+
+  const startSwipe = (x: number, y: number) => {
+    didSwipeRef.current = false;
+    gestureStartRef.current = { x, y };
+  };
+
+  const moveSwipe = (x: number, y: number) => {
+    if (!multi || !gestureStartRef.current) return;
+    const dx = x - gestureStartRef.current.x;
+    const dy = y - gestureStartRef.current.y;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      setDragOffsetX(dx * 0.28);
+    }
+  };
+
+  const endSwipe = (x: number, y: number) => {
+    if (!gestureStartRef.current) return;
+    const dx = x - gestureStartRef.current.x;
+    const dy = y - gestureStartRef.current.y;
+    gestureStartRef.current = null;
+    setDragOffsetX(0);
+
+    if (multi && Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+      didSwipeRef.current = true;
+      if (dx < 0) {
+        setActiveIdx((prev) => (prev + 1) % valid.length);
+      } else {
+        setActiveIdx((prev) => (prev - 1 + valid.length) % valid.length);
+      }
+    }
+  };
 
   return (
     <section className="viewer-section">
-      <h3>{title}</h3>
+      <div className="viewer-section__head">
+        <h3>{title}</h3>
+        {multi ? (
+          <span className="viewer-section__counter mono">
+            {safeIdx + 1} / {valid.length}
+          </span>
+        ) : null}
+      </div>
       <div className="viewer">
         <button
           className="viewer__stage"
           type="button"
-          onClick={() => onOpenLightbox(valid, safeIdx)}
+          onTouchStart={(e) => {
+            if (e.touches.length === 1) {
+              startSwipe(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchMove={(e) => {
+            if (e.touches.length === 1) {
+              moveSwipe(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (e.changedTouches.length > 0) {
+              endSwipe(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
+          }}
+          onPointerDown={(e) => {
+            if (e.pointerType === "mouse") {
+              startSwipe(e.clientX, e.clientY);
+            }
+          }}
+          onPointerMove={(e) => {
+            if (e.pointerType === "mouse" && gestureStartRef.current) {
+              moveSwipe(e.clientX, e.clientY);
+            }
+          }}
+          onPointerUp={(e) => {
+            if (e.pointerType === "mouse") {
+              endSwipe(e.clientX, e.clientY);
+            }
+          }}
+          onClick={() => {
+            if (didSwipeRef.current) {
+              didSwipeRef.current = false;
+              return;
+            }
+            onOpenLightbox(valid, safeIdx);
+          }}
           aria-label={`Perbesar ${current.label}`}
         >
-          {isCurrentFailed ? (
-            <SeismicMediaFallback label={current.label} caption={current.caption} />
-          ) : (
-            <img
-              src={current.src}
-              alt={current.caption || current.label}
-              referrerPolicy="no-referrer"
-              onError={() =>
-                setFailedMap((prev) => ({
-                  ...prev,
-                  [current.src]: true,
-                }))
-              }
-            />
-          )}
+          <div
+            className="viewer__slide-inner"
+            style={{
+              transform: dragOffsetX ? `translate3d(${dragOffsetX}px, 0, 0)` : undefined,
+              transition: dragOffsetX ? "none" : "transform 0.22s ease",
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            {isCurrentFailed ? (
+              <SeismicMediaFallback label={current.label} caption={current.caption} />
+            ) : (
+              <img
+                src={current.src}
+                alt={current.caption || current.label}
+                decoding="async"
+                draggable={false}
+                referrerPolicy="no-referrer"
+                onLoad={() =>
+                  setLoadedMap((prev) => ({
+                    ...prev,
+                    [current.src]: true,
+                  }))
+                }
+                onError={() =>
+                  setFailedMap((prev) => ({
+                    ...prev,
+                    [current.src]: true,
+                  }))
+                }
+              />
+            )}
+          </div>
           <span className="viewer__hint">
             <RoneIcon name="expand" />
-            Perbesar
+            <span>{multi ? "Geser foto · Ketuk perbesar" : "Perbesar"}</span>
           </span>
         </button>
-        <p className="viewer__meta">{current.caption}</p>
-        {valid.length > 1 ? (
+
+        <div className="viewer__meta-row">
+          <p className="viewer__meta">{current.caption}</p>
+          {multi ? (
+            <div className="viewer__dots" role="tablist" aria-label={`Pilih ${title}`}>
+              {valid.map((item, idx) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  role="tab"
+                  aria-selected={idx === safeIdx ? "true" : "false"}
+                  aria-label={`Tampilkan ${item.label}`}
+                  className={`viewer__dot${idx === safeIdx ? " is-active" : ""}`}
+                  onClick={() => setActiveIdx(idx)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        {multi ? (
           <div className="viewer__tabs" role="tablist" aria-label={title}>
             {valid.map((item, idx) => {
               const isTabFailed = Boolean(failedMap[item.src]);
@@ -209,24 +355,7 @@ export function MediaViewerSection({
                   aria-selected={idx === safeIdx ? "true" : "false"}
                   onClick={() => setActiveIdx(idx)}
                 >
-                  {isTabFailed ? (
-                    <SeismicMediaFallback label={item.label} compact />
-                  ) : (
-                    <img
-                      src={item.src}
-                      alt=""
-                      loading="lazy"
-                      width={36}
-                      height={36}
-                      referrerPolicy="no-referrer"
-                      onError={() =>
-                        setFailedMap((prev) => ({
-                          ...prev,
-                          [item.src]: true,
-                        }))
-                      }
-                    />
-                  )}
+                  <SeismicMediaFallback label={item.label} compact />
                   <span>{item.label}</span>
                 </button>
               );
@@ -643,19 +772,123 @@ export function RoneLightbox({
 }) {
   const [idx, setIdx] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
+  const gestureRef = React.useRef<{
+    startX: number;
+    startY: number;
+    basePanX: number;
+    basePanY: number;
+    moved: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (state) {
       setIdx(state.index);
       setZoom(1);
+      setPan({ x: 0, y: 0 });
     }
   }, [state]);
 
-  if (!state || !state.items.length) return null;
-  const current = state.items[idx] || state.items[0];
+  useEffect(() => {
+    if (!state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowRight" && state.items.length > 1) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        setIdx((i) => (i + 1) % state.items.length);
+      } else if (e.key === "ArrowLeft" && state.items.length > 1) {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+        setIdx((i) => (i - 1 + state.items.length) % state.items.length);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [state, onClose]);
+
+  const current = state?.items?.[idx] || state?.items?.[0] || null;
+  const [loadedMap, setLoadedMap] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!current || loadedMap[current.src] || failedMap[current.src]) return;
+    const timer = setTimeout(() => {
+      setFailedMap((prev) => (loadedMap[current.src] ? prev : { ...prev, [current.src]: true }));
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, [current, loadedMap, failedMap]);
+
+  if (!state || !state.items.length || !current) return null;
   const multi = state.items.length > 1;
   const isCurrentFailed = Boolean(failedMap[current.src]);
+
+  const resetZoomAndPan = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const goPrev = () => {
+    resetZoomAndPan();
+    setIdx((i) => (i - 1 + state.items.length) % state.items.length);
+  };
+
+  const goNext = () => {
+    resetZoomAndPan();
+    setIdx((i) => (i + 1) % state.items.length);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button")) return;
+    gestureRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      basePanX: pan.x,
+      basePanY: pan.y,
+      moved: false,
+    };
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!gestureRef.current) return;
+    const dx = e.clientX - gestureRef.current.startX;
+    const dy = e.clientY - gestureRef.current.startY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+      gestureRef.current.moved = true;
+    }
+    if (zoom > 1) {
+      const maxOffset = (zoom - 1) * 320;
+      setPan({
+        x: Math.max(-maxOffset, Math.min(maxOffset, gestureRef.current.basePanX + dx)),
+        y: Math.max(-maxOffset, Math.min(maxOffset, gestureRef.current.basePanY + dy)),
+      });
+    } else if (multi) {
+      setPan({ x: dx * 0.35, y: 0 });
+    }
+  };
+
+  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!gestureRef.current) return;
+    const dx = e.clientX - gestureRef.current.startX;
+    const dy = e.clientY - gestureRef.current.startY;
+    gestureRef.current = null;
+    setIsDragging(false);
+
+    if (zoom <= 1) {
+      if (multi && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.15) {
+        if (dx < 0) {
+          goNext();
+        } else {
+          goPrev();
+        }
+      } else {
+        setPan({ x: 0, y: 0 });
+      }
+    }
+  };
 
   return (
     <div
@@ -663,6 +896,9 @@ export function RoneLightbox({
       role="dialog"
       aria-modal="true"
       aria-labelledby="lb-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div className="lightbox__bar">
         <div className="lightbox__heading">
@@ -670,23 +906,40 @@ export function RoneLightbox({
             {current.label}
           </h2>
           {multi ? (
-            <span className="lightbox__count">
+            <span className="lightbox__count mono">
               {idx + 1} / {state.items.length}
             </span>
           ) : null}
         </div>
         <div className="lightbox__tools">
           <button
-            className="icon-btn"
+            className="icon-btn lightbox__tool-btn"
             type="button"
             aria-label="Perkecil"
             disabled={zoom <= 1}
-            onClick={() => setZoom((z) => Math.max(1, Number((z - 0.5).toFixed(1))))}
+            onClick={() => {
+              setZoom((z) => {
+                const next = Math.max(1, Number((z - 0.5).toFixed(1)));
+                if (next <= 1) setPan({ x: 0, y: 0 });
+                return next;
+              });
+            }}
           >
             <RoneIcon name="zoom-out" />
           </button>
           <button
-            className="icon-btn"
+            className="lightbox__tool-btn"
+            type="button"
+            aria-label="Reset ukuran"
+            onClick={resetZoomAndPan}
+            title="Tampilkan penuh (100%)"
+          >
+            <span className="mono" style={{ fontSize: "0.7rem", fontWeight: 800 }}>
+              {Math.round(zoom * 100)}%
+            </span>
+          </button>
+          <button
+            className="icon-btn lightbox__tool-btn"
             type="button"
             aria-label="Perbesar"
             disabled={zoom >= 3}
@@ -695,7 +948,7 @@ export function RoneLightbox({
             <RoneIcon name="zoom-in" />
           </button>
           <button
-            className="icon-btn"
+            className="icon-btn lightbox__tool-btn lightbox__tool-btn--close"
             type="button"
             aria-label="Tutup"
             onClick={onClose}
@@ -707,34 +960,64 @@ export function RoneLightbox({
 
       <div
         className="lightbox__stage"
-        onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
+        style={{
+          touchAction: "none",
+          cursor: zoom > 1 ? (isDragging ? "grabbing" : "grab") : multi ? "ew-resize" : "zoom-in",
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+        onDoubleClick={() => {
+          if (zoom > 1) {
+            resetZoomAndPan();
+          } else {
+            setZoom(2);
+          }
+        }}
       >
-        {isCurrentFailed ? (
-          <SeismicMediaFallback label={current.label} caption={current.caption} />
-        ) : (
-          <img
-            src={current.src}
-            alt={current.caption || current.label}
-            style={{ transform: `scale(${zoom})` }}
-            referrerPolicy="no-referrer"
-            onError={() =>
-              setFailedMap((prev) => ({
-                ...prev,
-                [current.src]: true,
-              }))
-            }
-          />
-        )}
+        <div
+          className="lightbox__media-frame"
+          style={{
+            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
+            transition: isDragging ? "none" : "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        >
+          {isCurrentFailed ? (
+            <SeismicMediaFallback
+              label={current.label}
+              caption={current.caption}
+              fullStage
+            />
+          ) : (
+            <img
+              src={current.src}
+              alt={current.caption || current.label}
+              draggable={false}
+              referrerPolicy="no-referrer"
+              onLoad={() =>
+                setLoadedMap((prev) => ({
+                  ...prev,
+                  [current.src]: true,
+                }))
+              }
+              onError={() =>
+                setFailedMap((prev) => ({
+                  ...prev,
+                  [current.src]: true,
+                }))
+              }
+            />
+          )}
+        </div>
+        {/* Desktop-only left/right arrows; hidden on mobile/tablet where touch swipe is used */}
         {multi ? (
           <>
             <button
               className="lightbox__nav lightbox__nav--prev icon-btn"
               type="button"
               aria-label="Gambar sebelumnya"
-              onClick={() => {
-                setZoom(1);
-                setIdx((i) => (i - 1 + state.items.length) % state.items.length);
-              }}
+              onClick={goPrev}
             >
               <RoneIcon name="chevron-left" />
             </button>
@@ -742,19 +1025,41 @@ export function RoneLightbox({
               className="lightbox__nav lightbox__nav--next icon-btn"
               type="button"
               aria-label="Gambar berikutnya"
-              onClick={() => {
-                setZoom(1);
-                setIdx((i) => (i + 1) % state.items.length);
-              }}
+              onClick={goNext}
             >
               <RoneIcon name="chevron-right" />
             </button>
           </>
         ) : null}
       </div>
-      <p className="lightbox__hint">
-        Klik dua kali untuk memperbesar atau reset · gunakan tombol atas untuk kontrol zoom
-      </p>
+
+      <div className="lightbox__footer">
+        {multi ? (
+          <div className="lightbox__dots" role="tablist" aria-label="Pilih peta atau foto">
+            {state.items.map((item, i) => (
+              <button
+                key={item.label}
+                type="button"
+                role="tab"
+                aria-selected={i === idx ? "true" : "false"}
+                aria-label={item.label}
+                className={`lightbox__dot-pill${i === idx ? " is-active" : ""}`}
+                onClick={() => {
+                  resetZoomAndPan();
+                  setIdx(i);
+                }}
+              >
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        <p className="lightbox__hint">
+          {multi
+            ? "Geser kiri/kanan untuk pindah foto · Ketuk dua kali untuk perbesar/reset"
+            : "Ketuk dua kali untuk perbesar atau tampilkan ukuran penuh"}
+        </p>
+      </div>
     </div>
   );
 }

@@ -15,13 +15,13 @@ import {
   weeklyBuckets,
 } from "./format";
 
-test("magnitude formatting uses explicit M prefix and Magnitudo unit instead of Mikro or Minor", () => {
+test("magnitude formatting uses explicit M prefix and Indonesian strength categories", () => {
   assert.equal(fmtMag(2.6), "2,6");
   assert.equal(fmtMagUnit(2.6), "M 2,6");
   assert.equal(fmtMagUnit(5.4), "M 5,4");
-  assert.equal(magCategory(2.1), "Magnitudo");
-  assert.equal(magCategory(3.4), "Magnitudo");
-  assert.equal(magCategory(5.8), "Magnitudo");
+  assert.equal(magCategory(2.1), "Mikro");
+  assert.equal(magCategory(3.4), "Ringan");
+  assert.equal(magCategory(5.8), "Kuat");
   assert.equal(magScaleRange(2.4), "M < 3,0");
   assert.equal(magScaleRange(3.5), "M 3,0–3,9");
   assert.equal(magScaleRange(5.2), "M 5,0–5,9");
@@ -35,16 +35,16 @@ test("magBucket, magTierInfo, and magColorHex classify magnitudes into 6 distinc
   assert.equal(magBucket(6.3), "6");
   assert.equal(magBucket(7.2), "7");
 
-  assert.equal(magColorHex(3.4), "#14B8A6");
+  assert.equal(magColorHex(3.4), "#EAB308");
   assert.equal(magColorHex(4.2), "#F59E0B");
-  assert.equal(magColorHex(5.9), "#F97316");
+  assert.equal(magColorHex(5.9), "#EA580C");
   assert.equal(magColorHex(6.5), "#EF4444");
   assert.equal(magColorHex(7.1), "#F43F5E");
 
   assert.equal(magTierInfo(3.2).isHigh, false);
   assert.equal(magTierInfo(5.9).isHigh, true);
-  assert.equal(magTierInfo(5.9).levelLabel, "Tinggi");
-  assert.equal(magTierInfo(6.4).levelLabel, "Kuat");
+  assert.equal(magTierInfo(5.9).levelLabel, "Kuat");
+  assert.equal(magTierInfo(6.4).levelLabel, "Besar");
 });
 
 test("coordinate, depth, and MMI felt parsing work accurately", () => {

@@ -47,7 +47,18 @@ async function fetchRoneUpstream<T>(upstreamPath: string): Promise<T | null> {
   }
 }
 
-export async function loadInitialRoneData(): Promise<InitialRonePayload> {
+interface ServerSnapshotCache {
+  payload: InitialRonePayload;
+  updatedAt: number;
+}
+
+let snapshotCache: ServerSnapshotCache | null = null;
+let backgroundRefreshPromise: Promise<void> | null = null;
+const SNAPSHOT_TTL_MS = 20_000;
+
+async function fetchLiveSnapshot(
+  baseFallback: InitialRonePayload
+): Promise<InitialRonePayload> {
   const [
     roneLatestWrap,
     directLatest,
@@ -58,7 +69,6 @@ export async function loadInitialRoneData(): Promise<InitialRonePayload> {
     roneSigWrap,
     directSig,
     roneTsunamiWrap,
-    archive3mWrap,
   ] = await Promise.all([
     fetchRoneUpstream<{ data: InitialRonePayload["latest"] }>("earthquakes/latest"),
     fetchDirectBmkgLatest(),
@@ -73,63 +83,28 @@ export async function loadInitialRoneData(): Promise<InitialRonePayload> {
     ),
     fetchDirectBmkgSignificant(),
     fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami"),
-    readJsonFixture<{ data: InitialRonePayload["archive3m"] }>("archive-3m.json", {
-      data: [],
-    }),
   ]);
 
-  // 1. Latest felt quake: pick whichever source has the newest origin_time, or fixture fallback
-  let latest = pickNewerEarthquake(roneLatestWrap?.data, directLatest);
-  if (!latest) {
-    const fallbackLatest = await readJsonFixture<{ data: InitialRonePayload["latest"] }>(
-      "latest.json",
-      { data: null }
-    );
-    latest = fallbackLatest.data || null;
-  }
+  const latest =
+    pickNewerEarthquake(roneLatestWrap?.data, directLatest) || baseFallback.latest;
 
-  // 2. Realtime detections: merge direct BMKG InaTEWS GCS (gempaQL.json) + Rone API, sorted newest first
-  let realtime = mergeRealtimeEvents(
+  const mergedRealtime = mergeRealtimeEvents(
     directRealtime,
     roneRealtimeWrap?.data || [],
     250
   );
-  if (!realtime.length) {
-    const fallbackRt = await readJsonFixture<{ data: InitialRonePayload["realtime"] }>(
-      "realtime.json",
-      { data: [] }
-    );
-    realtime = fallbackRt.data || [];
-  }
+  const realtime = mergedRealtime.length ? mergedRealtime : baseFallback.realtime;
 
-  // 3. Felt earthquakes: pick fresher list between direct BMKG CAP XML/TEWS and Rone API
-  let felt = pickNewerEarthquakeList(directFelt, roneFeltWrap?.data || []);
-  if (!felt.length) {
-    const fallbackFelt = await readJsonFixture<{ data: InitialRonePayload["felt"] }>(
-      "felt.json",
-      { data: [] }
-    );
-    felt = fallbackFelt.data || [];
-  }
+  const pickedFelt = pickNewerEarthquakeList(directFelt, roneFeltWrap?.data || []);
+  const felt = pickedFelt.length ? pickedFelt : baseFallback.felt;
 
-  // 4. Significant M5+ earthquakes: pick fresher list between direct BMKG CAP XML/TEWS and Rone API
-  let significant = pickNewerEarthquakeList(directSig, roneSigWrap?.data || []);
-  if (!significant.length) {
-    const fallbackSig = await readJsonFixture<{
-      data: InitialRonePayload["significant"];
-    }>("significant.json", { data: [] });
-    significant = fallbackSig.data || [];
-  }
+  const pickedSig = pickNewerEarthquakeList(directSig, roneSigWrap?.data || []);
+  const significant = pickedSig.length ? pickedSig : baseFallback.significant;
 
-  // 5. Tsunami bulletins
-  let tsunami = roneTsunamiWrap?.data || [];
-  if (!tsunami.length) {
-    const fallbackTs = await readJsonFixture<{ data: InitialRonePayload["tsunami"] }>(
-      "tsunami.json",
-      { data: [] }
-    );
-    tsunami = fallbackTs.data || [];
-  }
+  const tsunami =
+    roneTsunamiWrap?.data && roneTsunamiWrap.data.length
+      ? roneTsunamiWrap.data
+      : baseFallback.tsunami;
 
   return {
     latest,
@@ -137,7 +112,95 @@ export async function loadInitialRoneData(): Promise<InitialRonePayload> {
     felt,
     significant,
     tsunami,
+    archive3m: baseFallback.archive3m,
+    referenceNowMs: Date.now(),
+  };
+}
+
+async function loadFastLocalBase(): Promise<InitialRonePayload> {
+  const [latestWrap, rtWrap, feltWrap, sigWrap, tsWrap, archive3mWrap] =
+    await Promise.all([
+      readJsonFixture<{ data: InitialRonePayload["latest"] }>("latest.json", {
+        data: null,
+      }),
+      readJsonFixture<{ data: InitialRonePayload["realtime"] }>("realtime.json", {
+        data: [],
+      }),
+      readJsonFixture<{ data: InitialRonePayload["felt"] }>("felt.json", {
+        data: [],
+      }),
+      readJsonFixture<{ data: InitialRonePayload["significant"] }>(
+        "significant.json",
+        { data: [] }
+      ),
+      readJsonFixture<{ data: InitialRonePayload["tsunami"] }>("tsunami.json", {
+        data: [],
+      }),
+      readJsonFixture<{ data: InitialRonePayload["archive3m"] }>(
+        "archive-3m.json",
+        { data: [] }
+      ),
+    ]);
+
+  return {
+    latest: latestWrap.data || null,
+    realtime: (rtWrap.data || []).slice(0, 250),
+    felt: feltWrap.data || [],
+    significant: sigWrap.data || [],
+    tsunami: tsWrap.data || [],
     archive3m: archive3mWrap.data || [],
     referenceNowMs: Date.now(),
   };
 }
+
+function triggerBackgroundRefresh(base: InitialRonePayload) {
+  if (backgroundRefreshPromise) return;
+  backgroundRefreshPromise = fetchLiveSnapshot(base)
+    .then((fresh) => {
+      snapshotCache = {
+        payload: fresh,
+        updatedAt: Date.now(),
+      };
+    })
+    .catch(() => {})
+    .finally(() => {
+      backgroundRefreshPromise = null;
+    });
+}
+
+export async function loadInitialRoneData(): Promise<InitialRonePayload> {
+  const now = Date.now();
+  if (snapshotCache) {
+    if (now - snapshotCache.updatedAt > SNAPSHOT_TTL_MS) {
+      triggerBackgroundRefresh(snapshotCache.payload);
+    }
+    return {
+      ...snapshotCache.payload,
+      referenceNowMs: now,
+    };
+  }
+
+  const localBase = await loadFastLocalBase();
+
+  // Race live fetch against a tight 380ms budget so SSR TTFB stays instant for PageSpeed Insights
+  const raceResult = await Promise.race([
+    fetchLiveSnapshot(localBase).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 380)),
+  ]);
+
+  if (raceResult) {
+    snapshotCache = {
+      payload: raceResult,
+      updatedAt: Date.now(),
+    };
+    return raceResult;
+  }
+
+  snapshotCache = {
+    payload: localBase,
+    updatedAt: Date.now() - SNAPSHOT_TTL_MS,
+  };
+  triggerBackgroundRefresh(localBase);
+  return localBase;
+}
+

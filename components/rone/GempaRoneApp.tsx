@@ -429,8 +429,8 @@ export function GempaRoneApp({
         setLiveTimeLabel(`Diperbarui ${fmtClockWib(new Date(now))}`);
         setLiveOk(true);
         setPollCountdown(AUTO_POLL_SECONDS);
-        setRefreshCycle((c) => c + 1);
         if (manual) {
+          setRefreshCycle((c) => c + 1);
           showToast("Data real-time BMKG berhasil disinkronkan");
         }
       } catch {
@@ -445,23 +445,25 @@ export function GempaRoneApp({
     [showToast, soundEnabled]
   );
 
-  // Run immediate live sync on mount, plus 1-second ticker for relative time & 30s auto-poll
+  // Deferred initial sync after hydration + 15s relative clock & 30s auto-poll (avoids 1s full-app re-renders)
   useEffect(() => {
-    refreshLiveFeeds(false);
-  }, [refreshLiveFeeds]);
+    const initialSyncTimer = setTimeout(() => {
+      refreshLiveFeeds(false);
+    }, 3500);
 
-  useEffect(() => {
-    const ticker = setInterval(() => {
+    const pollTimer = setInterval(() => {
+      refreshLiveFeeds(false);
+    }, AUTO_POLL_SECONDS * 1000);
+
+    const clockTimer = setInterval(() => {
       setNowMs(Date.now());
-      setPollCountdown((prev) => {
-        if (prev <= 1) {
-          refreshLiveFeeds(false);
-          return AUTO_POLL_SECONDS;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(ticker);
+    }, 15000);
+
+    return () => {
+      clearTimeout(initialSyncTimer);
+      clearInterval(pollTimer);
+      clearInterval(clockTimer);
+    };
   }, [refreshLiveFeeds]);
 
   // Lazy load damaging earthquakes when Merusak tab is opened
@@ -1001,7 +1003,7 @@ export function GempaRoneApp({
                   }`}
                   className="card bento-ref__timeline"
                   aria-labelledby="latest-title"
-                  initial={{ opacity: 0.85, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -1009,7 +1011,7 @@ export function GempaRoneApp({
                     <motion.div
                       id="latest-dial"
                       key={`dial-${refreshCycle}-${activeHeroQuake?.event_id}`}
-                      initial={{ scale: 0.9, opacity: 0.75 }}
+                      initial={refreshCycle > 0 ? { scale: 0.9, opacity: 0.75 } : false}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ duration: 0.38 }}
                     >
@@ -1177,7 +1179,7 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-label="Kurva magnitudo dan distribusi kedalaman"
-                  initial={{ opacity: 0.85, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.34, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -1196,10 +1198,9 @@ export function GempaRoneApp({
 
                 {/* TOP-RIGHT CARD: OBSIDIAN BLACK SPOTLIGHT & INTERACTIVE MAP (Matches "Aperçu du fichier" dark card) */}
                 <motion.section
-                  key={`map-col-${refreshCycle}`}
                   className="card card--obsidian bento-ref__spotlight"
                   aria-label="Peta episentrum dan kartu pantauan prioritas"
-                  initial={{ opacity: 0.88, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.88, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -1286,7 +1287,7 @@ export function GempaRoneApp({
                   key={`recent-feed-${refreshCycle}`}
                   className="card bento-ref__files"
                   aria-labelledby="recent-heading"
-                  initial={{ opacity: 0.85, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -1361,7 +1362,7 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="summary-heading"
-                  initial={{ opacity: 0.85, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -1574,7 +1575,7 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="chart-heading"
-                  initial={{ opacity: 0.85, y: 8 }}
+                  initial={refreshCycle > 0 ? { opacity: 0.85, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
@@ -3306,8 +3307,8 @@ export function GempaRoneApp({
 
             {/* ==================== 8. TENTANG (/about/) ==================== */}
             {activeTab === "about" && (
-              <div className="split split--list">
-                <article className="card prose">
+              <div className="split split--list info-layout">
+                <article className="card prose info-prose-card">
                   <h2>Sumber Data</h2>
                   <p>
                     Semua data berasal dari <strong>BMKG</strong> (Badan Meteorologi,
@@ -3317,7 +3318,7 @@ export function GempaRoneApp({
                   </p>
 
                   <h2>Jenis Kanal Data</h2>
-                  <ul>
+                  <ul className="info-channel-list">
                     <li>
                       <strong>Realtime</strong> — deteksi otomatis jaringan seismik, muncul
                       beberapa menit setelah gempa. Waktu asli dalam UTC dikonversi ke WIB.
@@ -3344,93 +3345,119 @@ export function GempaRoneApp({
                     patahan gempa. Setiap kenaikan 1,0 satuan Magnitudo berarti pelepasan
                     energi sekitar 32 kali lebih besar:
                   </p>
-                  <table className="table table--structured scale-table">
-                    <thead>
-                      <tr>
-                        <th scope="col">Indikator</th>
-                        <th scope="col">Kategori &amp; Rentang</th>
-                        <th scope="col">Karakteristik Energi &amp; Dampak</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={2.5} size="sm" labelOverride="Mikro" />
-                        </td>
-                        <td className="mono">Mikro · M &lt; 3,0</td>
-                        <td>Terekam instrumen seismograf lokal; umumnya tidak terasa manusia.</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={3.4} size="sm" labelOverride="Ringan" />
-                        </td>
-                        <td className="mono">Ringan · M 3,0–3,9</td>
-                        <td>Terasa ringan di dekat episenter apabila kedalaman sangat dangkal.</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={4.5} size="sm" labelOverride="Sedang" />
-                        </td>
-                        <td className="mono">Sedang · M 4,0–4,9</td>
-                        <td>Getaran dirasakan cukup luas di dalam ruangan; jarang memicu kerusakan.</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={5.4} size="sm" labelOverride="Kuat" />
-                        </td>
-                        <td className="mono">Kuat · M 5,0–5,9</td>
-                        <td>Dapat menyebabkan kerusakan ringan–sedang pada konstruksi lemah.</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={6.5} size="sm" labelOverride="Besar" />
-                        </td>
-                        <td className="mono">Besar · M 6,0–6,9</td>
-                        <td>Energi besar; berpotensi merusak di kawasan berpenduduk dekat episenter.</td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <MagBadge magnitude={7.5} size="sm" labelOverride="Dahsyat" />
-                        </td>
-                        <td className="mono">Dahsyat · M ≥ 7,0</td>
-                        <td>Kerusakan struktural luas; hiposenter dangkal di laut dapat memicu tsunami.</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div className="info-table-wrap">
+                    <table className="table info-scale-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Indikator</th>
+                          <th scope="col">Kategori &amp; Rentang</th>
+                          <th scope="col">Karakteristik Energi &amp; Dampak</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={2.5} size="sm" labelOverride="Mikro" />
+                          </td>
+                          <td className="mono info-scale-table__range">Mikro · M &lt; 3,0</td>
+                          <td className="info-scale-table__desc">
+                            Terekam instrumen seismograf lokal; umumnya tidak terasa manusia.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={3.4} size="sm" labelOverride="Ringan" />
+                          </td>
+                          <td className="mono info-scale-table__range">Ringan · M 3,0–3,9</td>
+                          <td className="info-scale-table__desc">
+                            Terasa ringan di dekat episenter apabila kedalaman sangat dangkal.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={4.5} size="sm" labelOverride="Sedang" />
+                          </td>
+                          <td className="mono info-scale-table__range">Sedang · M 4,0–4,9</td>
+                          <td className="info-scale-table__desc">
+                            Getaran dirasakan cukup luas di dalam ruangan; jarang memicu kerusakan.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={5.4} size="sm" labelOverride="Kuat" />
+                          </td>
+                          <td className="mono info-scale-table__range">Kuat · M 5,0–5,9</td>
+                          <td className="info-scale-table__desc">
+                            Dapat menyebabkan kerusakan ringan–sedang pada konstruksi lemah.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={6.5} size="sm" labelOverride="Besar" />
+                          </td>
+                          <td className="mono info-scale-table__range">Besar · M 6,0–6,9</td>
+                          <td className="info-scale-table__desc">
+                            Energi besar; berpotensi merusak di kawasan berpenduduk dekat episenter.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="info-scale-table__badge">
+                            <MagBadge magnitude={7.5} size="sm" labelOverride="Dahsyat" />
+                          </td>
+                          <td className="mono info-scale-table__range">Dahsyat · M ≥ 7,0</td>
+                          <td className="info-scale-table__desc">
+                            Kerusakan struktural luas; hiposenter dangkal di laut dapat memicu tsunami.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
 
                   <h2>Intensitas Guncangan (MMI)</h2>
                   <p>
                     Skala Modified Mercalli Intensity (angka Romawi) menggambarkan guncangan
                     di lokasi pengamat:
                   </p>
-                  <table className="table table--structured">
-                    <tbody>
-                      <tr>
-                        <td className="mono">I–II MMI</td>
-                        <td>Dirasakan sedikit orang dalam keadaan tenang, benda gantung bergoyang.</td>
-                      </tr>
-                      <tr>
-                        <td className="mono">III–IV MMI</td>
-                        <td>Terasa nyata di dalam rumah seperti truk berat melintas.</td>
-                      </tr>
-                      <tr>
-                        <td className="mono">V–VI MMI</td>
-                        <td>Dirasakan hampir semua warga; barang ringan jatuh, plester dinding retak.</td>
-                      </tr>
-                      <tr>
-                        <td className="mono">VII–VIII MMI</td>
-                        <td>Kerusakan ringan hingga sedang pada bangunan standar.</td>
-                      </tr>
-                      <tr>
-                        <td className="mono">IX+ MMI</td>
-                        <td>Kerusakan struktural berat.</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <div className="info-table-wrap">
+                    <table className="table info-mmi-table">
+                      <tbody>
+                        <tr>
+                          <td className="mono info-mmi-table__code">I–II MMI</td>
+                          <td className="info-mmi-table__desc">
+                            Dirasakan sedikit orang dalam keadaan tenang, benda gantung bergoyang.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="mono info-mmi-table__code">III–IV MMI</td>
+                          <td className="info-mmi-table__desc">
+                            Terasa nyata di dalam rumah seperti truk berat melintas.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="mono info-mmi-table__code">V–VI MMI</td>
+                          <td className="info-mmi-table__desc">
+                            Dirasakan hampir semua warga; barang ringan jatuh, plester dinding retak.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="mono info-mmi-table__code">VII–VIII MMI</td>
+                          <td className="info-mmi-table__desc">
+                            Kerusakan ringan hingga sedang pada bangunan standar.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="mono info-mmi-table__code">IX+ MMI</td>
+                          <td className="info-mmi-table__desc">
+                            Kerusakan struktural berat.
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </article>
 
-                <aside className="split__sticky">
-                  <section className="card card--obsidian" aria-labelledby="api-heading">
+                <aside className="split__sticky info-aside">
+                  <section className="card card--obsidian info-api-card" aria-labelledby="api-heading">
                     <p className="hero__kicker">API JSON Terbuka</p>
                     <h2
                       className="mt-2"
@@ -3459,13 +3486,13 @@ export function GempaRoneApp({
                         <div key={path} className="endpoint endpoint--dark">
                           <code>
                             <span className="method">GET</span>
-                            {path}
+                            <span className="endpoint__path">{path}</span>
                           </code>
                           <span>{desc}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="row mt-5">
+                    <div className="row mt-5 info-actions">
                       <button
                         type="button"
                         className="btn"
@@ -3495,8 +3522,8 @@ export function GempaRoneApp({
 
             {/* ==================== 9. /DOCS INTERACTIVE OPENAPI EXPLORER ==================== */}
             {activeTab === "docs" && (
-              <div className="split split--list">
-                <section className="card">
+              <div className="split split--list info-layout">
+                <section className="card info-prose-card">
                   <div className="card__head">
                     <h2>Daftar Endpoint OpenAPI (v2.0.0)</h2>
                     <button
@@ -3533,7 +3560,7 @@ export function GempaRoneApp({
                       >
                         <code>
                           <span className="method">GET</span>
-                          {ep}
+                          <span className="endpoint__path">{ep}</span>
                         </code>
                         <span>{desc}</span>
                       </button>

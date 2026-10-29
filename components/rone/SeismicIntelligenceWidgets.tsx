@@ -196,7 +196,7 @@ export function EpicenterDistanceBar({
   return (
     <motion.div
       key={`calc-${quake.event_id}-${refreshCycle}`}
-      initial={{ opacity: 0.78, scale: 0.99 }}
+      initial={refreshCycle > 0 ? { opacity: 0.78, scale: 0.99 } : false}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
       className="seismic-calc"
@@ -302,12 +302,9 @@ export function SeismicCapsuleTimeline({
           const offsetLeft = offsets[idx % offsets.length];
 
           return (
-            <motion.div
+            <div
               key={ev.event_id}
               className="capsule-timeline__row"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.28, delay: idx * 0.045 }}
             >
               <span className="capsule-timeline__time mono">{timeLabel}</span>
               <div className="capsule-timeline__track">
@@ -326,7 +323,7 @@ export function SeismicCapsuleTimeline({
                   <MagBadge magnitude={ev.magnitude} size="sm" />
                 </button>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -458,7 +455,7 @@ export function SeismicMagnitudeSplineCard({
   return (
     <motion.div
       key={`spline-${refreshCycle}-${windowSize}`}
-      initial={{ opacity: 0.84, y: 4 }}
+      initial={refreshCycle > 0 ? { opacity: 0.84, y: 4 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className="spline-widget"
@@ -520,7 +517,7 @@ export function SeismicMagnitudeSplineCard({
           stroke="var(--ink)"
           strokeWidth="2.4"
           strokeLinecap="round"
-          initial={{ pathLength: 0.25, opacity: 0.5 }}
+          initial={refreshCycle > 0 ? { pathLength: 0.25, opacity: 0.5 } : false}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 0.65, ease: "easeOut" }}
         />
@@ -663,7 +660,7 @@ export function StackedQuickQuakesDeck({
   return (
     <motion.div
       key={`deck-${refreshCycle}`}
-      initial={{ opacity: 0.85, y: 4 }}
+      initial={refreshCycle > 0 ? { opacity: 0.85, y: 4 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
       className="quake-deck"
@@ -774,7 +771,7 @@ export function HypocenterDepthCrossSection({
   return (
     <motion.section
       key={`depth-sec-${refreshCycle}`}
-      initial={{ opacity: 0.85, y: 6 }}
+      initial={refreshCycle > 0 ? { opacity: 0.85, y: 6 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
       className="card bento__depth"

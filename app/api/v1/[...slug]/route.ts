@@ -187,46 +187,85 @@ export async function GET(
       candidateUrls.push(`${BMKG_TEWS_BASE}/${eventId}.mmi.jpg`);
     }
 
-    for (const mediaUrl of candidateUrls) {
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        const res = await fetch(mediaUrl, {
-          cache: "no-store",
-          signal: controller.signal,
-          headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
-        });
-        clearTimeout(timeout);
-        if (res.ok) {
-          const contentType = res.headers.get("Content-Type") || "";
-          if (contentType.startsWith("image/") || mediaUrl.endsWith(".jpg")) {
-            const buf = await res.arrayBuffer();
-            return new NextResponse(buf, {
-              status: 200,
-              headers: {
-                "Content-Type": contentType || "image/jpeg",
-                "Cache-Control": "public, max-age=1800",
-              },
+    try {
+      const resolvedImage = await Promise.any(
+        candidateUrls.map(async (mediaUrl) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 1400);
+          try {
+            const res = await fetch(mediaUrl, {
+              cache: "no-store",
+              signal: controller.signal,
+              headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
             });
+            if (!res.ok) throw new Error("Not OK");
+            const contentType = res.headers.get("Content-Type") || "";
+            if (!contentType.startsWith("image/") && !mediaUrl.endsWith(".jpg")) {
+              throw new Error("Not image");
+            }
+            const buf = await res.arrayBuffer();
+            if (buf.byteLength < 100) throw new Error("Empty image");
+            return { buf, contentType: contentType || "image/jpeg" };
+          } finally {
+            clearTimeout(timeout);
           }
-        }
-      } catch {
-        // try next candidate
-      }
+        })
+      );
+
+      return new NextResponse(resolvedImage.buf, {
+        status: 200,
+        headers: {
+          "Content-Type": resolvedImage.contentType,
+          "Cache-Control": "public, max-age=1800",
+        },
+      });
+    } catch {
+      // Fall through to rich telemetry SVG map
     }
 
+    const kindTitles: Record<string, string> = {
+      shakemap: "PETA ESTIMASI GUNCANGAN (SHAKEMAP MMI)",
+      "location-map": "PETA LOKASI EPISENTER GEMPA",
+      "station-intensity": "INTENSITAS STASIUN SEISMOGRAF",
+      impact: "ESTIMASI DAMPAK & KERUSAKAN",
+      intensity: "KONSTRUKSI & INTENSITAS GUNCANGAN",
+      "tsunami-zones": "PETA PERINGATAN ZONA TSUNAMI",
+      "tsunami-travel-time": "ESTIMASI WAKTU TIBA GELOMBANG (ETA)",
+      "tsunami-sea-height": "ESTIMASI KETINGGIAN MUKA LAUT",
+    };
+    const subtitle = kindTitles[kind] || `VISUALISASI TELEMETRI (${kind.toUpperCase()})`;
+
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
-      <rect width="800" height="600" fill="#141418"/>
-      <circle cx="400" cy="300" r="210" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-dasharray="8 6" opacity="0.55"/>
-      <circle cx="400" cy="300" r="140" fill="none" stroke="#F97316" stroke-width="3" opacity="0.75"/>
-      <circle cx="400" cy="300" r="70" fill="rgba(239,68,68,0.18)" stroke="#EF4444" stroke-width="3"/>
-      <circle cx="400" cy="300" r="10" fill="#FB7185"/>
-      <text x="400" y="80" text-anchor="middle" font-family="sans-serif" font-size="22" font-weight="bold" fill="#FAFAFA">BMKG InaTEWS — ${kind.toUpperCase()} (${eventId})</text>
-      <text x="400" y="540" text-anchor="middle" font-family="monospace" font-size="15" fill="#A1A1AA">Estimasi Intensitas Guncangan (Skala MMI)</text>
+      <defs>
+        <radialGradient id="g" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stop-color="#F97316" stop-opacity="0.32"/>
+          <stop offset="50%" stop-color="#14B8A6" stop-opacity="0.14"/>
+          <stop offset="100%" stop-color="#0F0F12" stop-opacity="0.98"/>
+        </radialGradient>
+        <pattern id="p" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#3F3F46" stroke-width="0.7" stroke-opacity="0.4"/>
+        </pattern>
+      </defs>
+      <rect width="800" height="600" fill="#0F0F12"/>
+      <rect width="800" height="600" fill="url(#p)"/>
+      <rect width="800" height="600" fill="url(#g)"/>
+      <path d="M110 315 Q 200 340, 290 352 T 465 360 T 625 322 T 710 280" fill="none" stroke="#52525B" stroke-width="2" stroke-dasharray="8 6"/>
+      <circle cx="400" cy="300" r="210" fill="none" stroke="#14B8A6" stroke-width="2" stroke-dasharray="8 6" opacity="0.5"/>
+      <circle cx="400" cy="300" r="145" fill="none" stroke="#F59E0B" stroke-width="2.5" opacity="0.75"/>
+      <circle cx="400" cy="300" r="82" fill="rgba(239,68,68,0.16)" stroke="#EF4444" stroke-width="3"/>
+      <circle cx="400" cy="300" r="11" fill="#F43F5E" stroke="#FFFFFF" stroke-width="2.5"/>
+      <rect x="140" y="42" width="520" height="64" rx="16" fill="rgba(15,15,18,0.88)" stroke="rgba(255,255,255,0.16)"/>
+      <text x="400" y="70" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="bold" fill="#FAFAFA">BMKG InaTEWS · ID ${eventId}</text>
+      <text x="400" y="92" text-anchor="middle" font-family="monospace" font-size="13" fill="#E4E4E7">${subtitle}</text>
+      <rect x="210" y="518" width="380" height="40" rx="20" fill="rgba(15,15,18,0.88)" stroke="rgba(255,255,255,0.14)"/>
+      <text x="400" y="543" text-anchor="middle" font-family="monospace" font-size="13" fill="#A1A1AA">Telemetri Seismik &amp; Kontur Isoseismal BMKG</text>
     </svg>`;
     return new NextResponse(svg, {
       status: 200,
-      headers: { "Content-Type": "image/svg+xml; charset=utf-8" },
+      headers: {
+        "Content-Type": "image/svg+xml; charset=utf-8",
+        "Cache-Control": "public, max-age=900",
+      },
     });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   fmtDateTime,
   fmtDepth,
@@ -10,34 +10,8 @@ import {
   magCategory,
 } from "@/lib/rone/format";
 
-function useAnimatedMagnitude(target: number, durationMs = 520): string {
-  const [val, setVal] = useState<number>(target);
-
-  useEffect(() => {
-    if (!Number.isFinite(target)) return;
-    let rafId = 0;
-    const startTime = performance.now();
-    const startVal = Math.max(0, target * 0.25);
-
-    const step = (now: number) => {
-      const elapsed = now - startTime;
-      const t = Math.min(1, elapsed / durationMs);
-      // Cubic ease-out
-      const eased = 1 - Math.pow(1 - t, 3);
-      const current = startVal + (target - startVal) * eased;
-      setVal(current);
-      if (t < 1) {
-        rafId = requestAnimationFrame(step);
-      } else {
-        setVal(target);
-      }
-    };
-
-    rafId = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafId);
-  }, [target, durationMs]);
-
-  return fmtMag(val);
+function useAnimatedMagnitude(target: number): string {
+  return fmtMag(target);
 }
 
 export const ICON_PATHS: Record<string, string> = {
@@ -119,7 +93,7 @@ export function MagBadge({
   const bucket = magBucket(magnitude);
   const category = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const animatedNum = useAnimatedMagnitude(magnitude, 480);
+  const animatedNum = useAnimatedMagnitude(magnitude);
   // 270-degree track is 75% of 100 pathLength; scale magnitude [1.5..8.8] across [10..74]
   const arcFill = Number(
     Math.max(10, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
@@ -186,7 +160,7 @@ export function MagDial({
   const bucket = magBucket(magnitude);
   const strengthLabel = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const animatedNum = useAnimatedMagnitude(magnitude, 580);
+  const animatedNum = useAnimatedMagnitude(magnitude);
   const fill = Number(
     Math.max(11, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
   );
