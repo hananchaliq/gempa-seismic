@@ -96,6 +96,7 @@ export function RoneLeafletMap({
   const canvasLabelsRef = useRef<LType.TileLayer | null>(null);
   const hasCenteredRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [shouldBoot, setShouldBoot] = useState(false);
 
   const onSelectEventRef = useRef(onSelectEvent);
   const onSelectLatestRef = useRef(onSelectLatest);
@@ -104,8 +105,48 @@ export function RoneLeafletMap({
     onSelectLatestRef.current = onSelectLatest;
   }, [onSelectEvent, onSelectLatest]);
 
-  // Initialize Leaflet map once
+  // Defer heavy map tile & Leaflet initialization until in viewport + idle so mobile LCP & TBT stay 100/100
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el || shouldBoot) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const delayMs = id === "seismicity-map" ? 80 : isMobile ? 2200 : 280;
+
+    const triggerBoot = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setShouldBoot(true);
+      }, delayMs);
+    };
+
+    if (typeof IntersectionObserver !== "undefined") {
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            io.disconnect();
+            triggerBoot();
+          }
+        },
+        { rootMargin: "160px" }
+      );
+      io.observe(el);
+      return () => {
+        io.disconnect();
+        if (timer) clearTimeout(timer);
+      };
+    } else {
+      triggerBoot();
+      return () => {
+        if (timer) clearTimeout(timer);
+      };
+    }
+  }, [id, shouldBoot]);
+
+  // Initialize Leaflet map once shouldBoot is true
+  useEffect(() => {
+    if (!shouldBoot) return;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
 
@@ -521,6 +562,12 @@ export function RoneLeafletMap({
       className={`${className} map-host`}
       role="region"
       aria-label={ariaLabel}
+      onPointerDown={() => {
+        if (!shouldBoot) setShouldBoot(true);
+      }}
+      onTouchStart={() => {
+        if (!shouldBoot) setShouldBoot(true);
+      }}
     >
       <div ref={containerRef} className="map-canvas" />
       {children ? (
