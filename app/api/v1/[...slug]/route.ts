@@ -4,7 +4,9 @@ import path from "node:path";
 import {
   bridgeOfficialQuakesIntoRealtime,
   fetchDirectBmkgFelt,
+  fetchDirectBmkgHistory,
   fetchDirectBmkgLatest,
+  fetchDirectBmkgNarrative,
   fetchDirectBmkgRealtime,
   fetchDirectBmkgSignificant,
   mergeEarthquakeLists,
@@ -12,7 +14,11 @@ import {
   pickNewerEarthquake,
   pickNewerEarthquakeList,
 } from "@/lib/rone/bmkgLiveDirect";
-import type { RoneEarthquake, RoneRealtimeEvent } from "@/lib/rone/format";
+import type {
+  RoneEarthquake,
+  RoneHistoryRecord,
+  RoneRealtimeEvent,
+} from "@/lib/rone/format";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,20 +64,28 @@ function getFallbackFile(slugPath: string): string | null {
 }
 
 async function fetchRoneJson<T>(pathWithQuery: string, timeoutMs = 4800): Promise<T | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const fetchTask = (async () => {
+    try {
+      const res = await fetch(`${RONE_UPSTREAM}/${pathWithQuery}`, {
+        cache: "no-store",
+        headers: BROWSER_HEADERS,
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  })();
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutTask = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+
   try {
-    const res = await fetch(`${RONE_UPSTREAM}/${pathWithQuery}`, {
-      cache: "no-store",
-      signal: controller.signal,
-      headers: BROWSER_HEADERS,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+    return await Promise.race([fetchTask, timeoutTask]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -81,43 +95,6 @@ async function readLocalFallback(
 ): Promise<Response | null> {
   const filename = getFallbackFile(slugPath);
   if (!filename) {
-    if (slugPath.startsWith("earthquakes/realtime/") && slugPath.endsWith("/history")) {
-      const eventId = slugPath.split("/")[2];
-      return NextResponse.json(
-        {
-          event_id: eventId,
-          records: [
-            {
-              timestamp: new Date(Date.now() - 480_000).toISOString(),
-              minutes_after_origin: 1.8,
-              magnitude: 3.2,
-              magnitude_type: "Mlv",
-              depth_km: 10,
-              phase_count: 14,
-            },
-            {
-              timestamp: new Date(Date.now() - 180_000).toISOString(),
-              minutes_after_origin: 5.4,
-              magnitude: 3.3,
-              magnitude_type: "Mlv",
-              depth_km: 10,
-              phase_count: 26,
-            },
-          ],
-        },
-        { headers: NO_STORE_HEADERS }
-      );
-    }
-    if (slugPath.startsWith("earthquakes/") && slugPath.endsWith("/narrative")) {
-      const eventId = slugPath.split("/")[1];
-      return NextResponse.json(
-        {
-          event_id: eventId,
-          html: "<p>Berdasarkan lokasi episenter dan kedalaman hiposenternya, gempabumi yang terjadi merupakan jenis gempabumi dangkal akibat adanya aktivitas sesar aktif setempat. Hingga saat ini belum ada laporan dampak kerusakan yang ditimbulkan akibat gempabumi tersebut.</p>",
-        },
-        { headers: NO_STORE_HEADERS }
-      );
-    }
     return null;
   }
 
@@ -218,12 +195,9 @@ export async function GET(
     try {
       const resolvedImage = await Promise.any(
         candidateUrls.map(async (mediaUrl) => {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 6500);
-          try {
+          const fetchTask = (async () => {
             const res = await fetch(mediaUrl, {
               cache: "no-store",
-              signal: controller.signal,
               headers: { "User-Agent": BROWSER_HEADERS["User-Agent"] },
             });
             if (!res.ok) throw new Error("Not OK");
@@ -239,8 +213,17 @@ export async function GET(
             if (buf.byteLength < 100) throw new Error("Empty image");
             const fallbackMime = mediaUrl.endsWith(".png") ? "image/png" : "image/jpeg";
             return { buf, contentType: contentType || fallbackMime };
+          })();
+
+          let timer: ReturnType<typeof setTimeout> | null = null;
+          const timeoutTask = new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("Image timeout")), 6500);
+          });
+
+          try {
+            return await Promise.race([fetchTask, timeoutTask]);
           } finally {
-            clearTimeout(timeout);
+            if (timer) clearTimeout(timer);
           }
         })
       );
@@ -450,23 +433,97 @@ export async function GET(
     }
   }
 
-  // 5. Generic upstream proxy for tsunami, history, narrative, etc.
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const upstreamRes = await fetch(`${RONE_UPSTREAM}/${slugPath}${cleanSearch}`, {
-      cache: "no-store",
-      signal: controller.signal,
-      headers: BROWSER_HEADERS,
-    });
-    clearTimeout(timeout);
+  // 4e. Authentic BMKG Revision History (/api/v1/earthquakes/realtime/{eventId}/history)
+  if (slugPath.startsWith("earthquakes/realtime/") && slugPath.endsWith("/history")) {
+    const eventId = slugPath.split("/")[2] || "";
+    const [directRecords, roneHistory] = await Promise.all([
+      fetchDirectBmkgHistory(eventId),
+      fetchRoneJson<{ event_id: string; records: RoneHistoryRecord[] }>(
+        `earthquakes/realtime/${encodeURIComponent(eventId)}/history`,
+        3200
+      ),
+    ]);
 
-    if (upstreamRes.ok) {
-      const body = await upstreamRes.text();
-      const contentType =
-        upstreamRes.headers.get("Content-Type") || "application/json; charset=utf-8";
-      memoryCache.set(cacheKey, { body, contentType, timestamp: Date.now() });
-      return new NextResponse(body, {
+    const authenticRecords =
+      directRecords && directRecords.length > 0
+        ? directRecords
+        : roneHistory?.event_id === eventId && Array.isArray(roneHistory.records)
+          ? roneHistory.records
+          : [];
+
+    const payload = JSON.stringify({
+      event_id: eventId,
+      records: authenticRecords,
+    });
+    memoryCache.set(cacheKey, {
+      body: payload,
+      contentType: "application/json; charset=utf-8",
+      timestamp: Date.now(),
+    });
+    return new NextResponse(payload, { status: 200, headers: NO_STORE_HEADERS });
+  }
+
+  // 4f. Authentic BMKG Official Press Release Narrative (/api/v1/earthquakes/{eventId}/narrative)
+  if (slugPath.startsWith("earthquakes/") && slugPath.endsWith("/narrative")) {
+    const eventId = slugPath.split("/")[1] || "";
+    const [directHtml, roneNarrative] = await Promise.all([
+      fetchDirectBmkgNarrative(eventId),
+      fetchRoneJson<{ event_id: string; html: string | null }>(
+        `earthquakes/${encodeURIComponent(eventId)}/narrative`,
+        3200
+      ),
+    ]);
+
+    const authenticHtml =
+      directHtml ||
+      (roneNarrative?.event_id === eventId && roneNarrative.html ? roneNarrative.html : null);
+
+    const payload = JSON.stringify({
+      event_id: eventId,
+      html: authenticHtml,
+    });
+    memoryCache.set(cacheKey, {
+      body: payload,
+      contentType: "application/json; charset=utf-8",
+      timestamp: Date.now(),
+    });
+    return new NextResponse(payload, { status: 200, headers: NO_STORE_HEADERS });
+  }
+
+  // 5. Generic upstream proxy for tsunami, etc.
+  try {
+    const fetchTask = (async () => {
+      try {
+        const res = await fetch(`${RONE_UPSTREAM}/${slugPath}${cleanSearch}`, {
+          cache: "no-store",
+          headers: BROWSER_HEADERS,
+        });
+        if (!res.ok) return null;
+        const body = await res.text();
+        const contentType =
+          res.headers.get("Content-Type") || "application/json; charset=utf-8";
+        return { body, contentType };
+      } catch {
+        return null;
+      }
+    })();
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timeoutTask = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), 5000);
+    });
+
+    const upstreamResult = await Promise.race([fetchTask, timeoutTask]).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
+
+    if (upstreamResult) {
+      memoryCache.set(cacheKey, {
+        body: upstreamResult.body,
+        contentType: upstreamResult.contentType,
+        timestamp: Date.now(),
+      });
+      return new NextResponse(upstreamResult.body, {
         status: 200,
         headers: NO_STORE_HEADERS,
       });

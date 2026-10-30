@@ -17,6 +17,10 @@ import {
   RoneHistoryRecord,
   RoneRealtimeEvent,
 } from "@/lib/rone/format";
+import {
+  fetchDirectBmkgHistory,
+  fetchDirectBmkgNarrative,
+} from "@/lib/rone/bmkgLiveDirect";
 import { FactsList, MagBadge, MagDial, RoneIcon } from "./RoneIcons";
 
 export type DetailTarget =
@@ -485,29 +489,54 @@ export function RoneDetailSheet({
 
   useEffect(() => {
     if (!target) return;
+    let cancelled = false;
+    const currentId = target.data.event_id;
     setNarrativeHtml(null);
     setHistoryRecords(null);
 
     if (target.kind === "felt" && target.data.has_narrative) {
       setLoadingExtra(true);
-      fetch(`/api/v1/earthquakes/${target.data.event_id}/narrative`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (d?.html) setNarrativeHtml(d.html);
+      Promise.all([
+        fetch(`/api/v1/earthquakes/${encodeURIComponent(currentId)}/narrative`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        fetchDirectBmkgNarrative(currentId).catch(() => null),
+      ])
+        .then(([apiRes, directHtml]) => {
+          if (cancelled) return;
+          const html =
+            directHtml || (apiRes?.event_id === currentId ? apiRes?.html : null);
+          if (html) setNarrativeHtml(html);
         })
-        .catch(() => {})
-        .finally(() => setLoadingExtra(false));
+        .finally(() => {
+          if (!cancelled) setLoadingExtra(false);
+        });
     } else if (target.kind === "realtime") {
       setLoadingExtra(true);
-      fetch(`/api/v1/earthquakes/realtime/${target.data.event_id}/history`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
-          if (Array.isArray(d?.records)) setHistoryRecords(d.records);
-          else setHistoryRecords([]);
+      Promise.all([
+        fetch(`/api/v1/earthquakes/realtime/${encodeURIComponent(currentId)}/history`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        fetchDirectBmkgHistory(currentId).catch(() => null),
+      ])
+        .then(([apiRes, directRecords]) => {
+          if (cancelled) return;
+          if (directRecords && directRecords.length > 0) {
+            setHistoryRecords(directRecords);
+          } else if (apiRes?.event_id === currentId && Array.isArray(apiRes?.records)) {
+            setHistoryRecords(apiRes.records);
+          } else {
+            setHistoryRecords([]);
+          }
         })
-        .catch(() => setHistoryRecords([]))
-        .finally(() => setLoadingExtra(false));
+        .finally(() => {
+          if (!cancelled) setLoadingExtra(false);
+        });
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [target]);
 
   useEffect(() => {
@@ -698,6 +727,9 @@ export function RoneDetailSheet({
                       <span className="pill pill--ok">
                         {target.data.status === "confirmed" ? "Terkonfirmasi" : target.data.status}
                       </span>
+                      {target.data.phase_count != null ? (
+                        <span className="pill">{fmtNumber(target.data.phase_count)} fase</span>
+                      ) : null}
                       {target.data.has_focal_mechanism ? (
                         <span className="pill">Mekanisme fokal</span>
                       ) : null}

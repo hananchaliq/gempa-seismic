@@ -114,10 +114,14 @@ export interface RoneStation {
 export interface RoneHistoryRecord {
   timestamp: string;
   minutes_after_origin: number | null;
-  magnitude: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  magnitude: number | null;
   magnitude_type: string | null;
-  depth_km: number;
+  magnitude_count?: number | null;
+  depth_km: number | null;
   phase_count: number | null;
+  status?: string | null;
 }
 
 const tzDateTime = new Intl.DateTimeFormat("id-ID", {

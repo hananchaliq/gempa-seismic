@@ -42,20 +42,28 @@ async function fetchRoneUpstream<T>(
   upstreamPath: string,
   timeoutMs = 1500
 ): Promise<T | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const fetchTask = (async () => {
+    try {
+      const res = await fetch(`${RONE_UPSTREAM}/${upstreamPath}`, {
+        cache: "no-store",
+        headers: BROWSER_HEADERS,
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
+  })();
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutTask = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+
   try {
-    const res = await fetch(`${RONE_UPSTREAM}/${upstreamPath}`, {
-      cache: "no-store",
-      signal: controller.signal,
-      headers: BROWSER_HEADERS,
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+    return await Promise.race([fetchTask, timeoutTask]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -82,14 +90,14 @@ async function fetchLiveSnapshot(
     fetchDirectBmkgRealtime(250, 0),
     fetchDirectBmkgFelt(),
     fetchDirectBmkgSignificant(),
-    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami", 1200),
+    fetchRoneUpstream<{ data: InitialRonePayload["tsunami"] }>("tsunami", 1500),
   ]);
 
-  let pickedFelt = pickNewerEarthquakeList(directFelt, baseFallback.felt);
-  let pickedSig = pickNewerEarthquakeList(directSig, baseFallback.significant);
+  let pickedFelt = directFelt.length ? directFelt : baseFallback.felt;
+  let pickedSig = directSig.length ? directSig : baseFallback.significant;
 
   // Pick the freshest official earthquake across latest, felt[0], and significant[0]
-  let latest = pickNewerEarthquake(directLatest, baseFallback.latest);
+  let latest = directLatest || baseFallback.latest;
   if (pickedFelt[0]) {
     latest = pickNewerEarthquake(latest, pickedFelt[0]);
   }
@@ -108,13 +116,11 @@ async function fetchLiveSnapshot(
   const felt = pickedFelt.length ? pickedFelt : baseFallback.felt;
   const significant = pickedSig.length ? pickedSig : baseFallback.significant;
 
-  const mergedRealtime = mergeRealtimeEvents(
-    directRealtime,
-    baseFallback.realtime,
-    250
-  );
+  const baseRealtime = directRealtime.length
+    ? directRealtime
+    : baseFallback.realtime;
   const bridgedRealtime = bridgeOfficialQuakesIntoRealtime(
-    mergedRealtime.length ? mergedRealtime : baseFallback.realtime,
+    baseRealtime,
     [latest, felt[0], significant[0]],
     250
   );

@@ -1,4 +1,8 @@
-import type { RoneEarthquake, RoneRealtimeEvent } from "./format";
+import type {
+  RoneEarthquake,
+  RoneHistoryRecord,
+  RoneRealtimeEvent,
+} from "./format";
 
 const BMKG_GCS_BASE = "https://bmkg-content-inatews.storage.googleapis.com";
 const BMKG_TEWS_BASE = "https://data.bmkg.go.id/DataMKG/TEWS";
@@ -16,23 +20,32 @@ async function fetchTextWithTimeout(
   timeoutMs = 5500,
   includeServerHeaders = typeof window === "undefined"
 ): Promise<string | null> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const headers: Record<string, string> = includeServerHeaders
+    ? DEFAULT_SERVER_HEADERS
+    : { Accept: "application/json, text/xml, */*" };
+
+  const fetchTask = (async () => {
+    try {
+      const res = await fetch(url, {
+        cache: "no-store",
+        headers,
+      });
+      if (!res.ok) return null;
+      return await res.text();
+    } catch {
+      return null;
+    }
+  })();
+
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutTask = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+
   try {
-    const headers: Record<string, string> = includeServerHeaders
-      ? DEFAULT_SERVER_HEADERS
-      : { Accept: "application/json, text/xml, */*" };
-    const res = await fetch(url, {
-      cache: "no-store",
-      signal: controller.signal,
-      headers,
-    });
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
+    return await Promise.race([fetchTask, timeoutTask]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -523,12 +536,16 @@ export function mergeEarthquakeLists(
         ...incoming,
         felt: incoming.felt || prev.felt,
         potential: incoming.potential || prev.potential,
+        has_narrative: Boolean(incoming.has_narrative || prev.has_narrative),
       };
     } else {
       const prev = result[existingIdx];
-      if (!prev.felt && incoming.felt) {
-        result[existingIdx] = { ...prev, felt: incoming.felt };
-      }
+      result[existingIdx] = {
+        ...prev,
+        felt: prev.felt || incoming.felt,
+        potential: prev.potential || incoming.potential,
+        has_narrative: Boolean(prev.has_narrative || incoming.has_narrative),
+      };
     }
   };
 
@@ -682,6 +699,88 @@ export async function fetchDirectBmkgSignificant(): Promise<RoneEarthquake[]> {
 }
 
 /**
+ * 5. Fetch Authentic BMKG InaTEWS Revision History (`history.{eventId}.txt`) directly from BMKG GCS.
+ *    Returns `RoneHistoryRecord[]` if BMKG has published revision history for `eventId`, or `null` if none exists.
+ */
+export async function fetchDirectBmkgHistory(
+  eventId: string
+): Promise<RoneHistoryRecord[] | null> {
+  if (!eventId || !/^[A-Za-z0-9_.-]+$/.test(eventId)) return null;
+  const raw = await fetchTextWithTimeout(
+    `${BMKG_GCS_BASE}/history.${encodeURIComponent(eventId)}.txt?t=${Date.now()}`,
+    4500
+  );
+  if (!raw || raw.includes("<Error>") || raw.includes("AccessDenied")) {
+    return null;
+  }
+
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !l.startsWith("#"));
+  if (!lines.length) return [];
+
+  const records: RoneHistoryRecord[] = [];
+  for (const line of lines) {
+    const cols = line.split("|").map((c) => c.trim());
+    if (cols.length < 6 || !cols[0]) continue;
+    const tsRaw = cols[0];
+    const isoUtc = tsRaw.includes("T")
+      ? tsRaw
+      : `${tsRaw.replace(/\s+/g, "T")}${tsRaw.endsWith("Z") ? "" : "Z"}`;
+    if (Number.isNaN(new Date(isoUtc).getTime())) continue;
+
+    const minAfter = cols[1] ? parseFloat(cols[1]) : NaN;
+    const lat = cols[2] ? parseFloat(cols[2]) : NaN;
+    const lon = cols[3] ? parseFloat(cols[3]) : NaN;
+    const depth = cols[4] ? parseFloat(cols[4]) : NaN;
+    const phases = cols[5] ? parseInt(cols[5], 10) : NaN;
+    const magType = cols[6] || null;
+    const mag = cols[7] ? parseFloat(cols[7]) : NaN;
+    const magCount = cols[8] ? parseInt(cols[8], 10) : NaN;
+    const status = cols[9] || null;
+
+    records.push({
+      timestamp: isoUtc,
+      minutes_after_origin: Number.isFinite(minAfter)
+        ? Number(minAfter.toFixed(2))
+        : null,
+      latitude: Number.isFinite(lat) ? Number(lat.toFixed(2)) : null,
+      longitude: Number.isFinite(lon) ? Number(lon.toFixed(2)) : null,
+      depth_km: Number.isFinite(depth) ? Number(depth.toFixed(1)) : null,
+      phase_count: Number.isFinite(phases) ? phases : null,
+      magnitude_type: magType,
+      magnitude: Number.isFinite(mag) ? Number(mag.toFixed(2)) : null,
+      magnitude_count: Number.isFinite(magCount) ? magCount : null,
+      status,
+    });
+  }
+
+  return records;
+}
+
+/**
+ * 6. Fetch Authentic BMKG Official Press Release Narrative (`{eventId}_narasi.txt`) directly from BMKG GCS.
+ *    Returns HTML string if published by BMKG for `eventId`, or `null` if none exists.
+ */
+export async function fetchDirectBmkgNarrative(
+  eventId: string
+): Promise<string | null> {
+  if (!eventId || !/^\d{14}$/.test(eventId)) return null;
+  const raw = await fetchTextWithTimeout(
+    `${BMKG_GCS_BASE}/${encodeURIComponent(eventId)}_narasi.txt?t=${Date.now()}`,
+    4500
+  );
+  if (!raw || raw.includes("<Error>") || raw.includes("AccessDenied")) {
+    return null;
+  }
+  const cleaned = raw
+    .replace(/<p[^>]*>\s*(?:&nbsp;|\u00a0)?\s*<\/p>/gi, "")
+    .trim();
+  return cleaned || null;
+}
+
+/**
  * Helper to merge two lists of RoneRealtimeEvent deduplicated by event_id, sorted newest first.
  */
 export function mergeRealtimeEvents(
@@ -735,7 +834,7 @@ export function bridgeOfficialQuakesIntoRealtime(
       const timeDiff = Math.abs(tRt - tQ);
       const latDiff = Math.abs(rt.latitude - q.latitude);
       const lonDiff = Math.abs(rt.longitude - q.longitude);
-      return timeDiff <= 90_000 && latDiff <= 0.75 && lonDiff <= 0.75;
+      return timeDiff <= 120_000 && latDiff <= 1.2 && lonDiff <= 1.2;
     });
 
     if (!alreadyPresent) {
@@ -771,10 +870,16 @@ export function pickNewerEarthquake(
     const tA = new Date(a.origin_time).getTime();
     const tB = new Date(b.origin_time).getTime();
     if (Math.abs(tA - tB) <= 15_000) {
-      // Same earthquake: prefer the one with a felt report or non-synthetic event_id
-      if (a.felt && !b.felt) return a;
-      if (b.felt && !a.felt) return b;
-      return a;
+      // Same earthquake: merge felt/narrative/potential while preferring real CAP event_id
+      const preferred = a.felt && !b.felt ? a : b.felt && !a.felt ? b : a;
+      const other = preferred === a ? b : a;
+      return {
+        ...other,
+        ...preferred,
+        felt: preferred.felt || other.felt,
+        potential: preferred.potential || other.potential,
+        has_narrative: Boolean(preferred.has_narrative || other.has_narrative),
+      };
     }
     return tB > tA ? b : a;
   }
