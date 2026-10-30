@@ -101,6 +101,56 @@ const NAV_ITEMS: NavItem[] = [
   { key: "about", path: "/about", label: "Info", shortLabel: "Info", icon: "info" },
 ];
 
+const MOBILE_PRIMARY_NAV: NavItem[] = [
+  { key: "home", path: "/", label: "Terkini", shortLabel: "Terkini", icon: "home" },
+  { key: "realtime", path: "/realtime", label: "Realtime", shortLabel: "Realtime", icon: "pulse" },
+  { key: "felt", path: "/felt", label: "Dirasakan", shortLabel: "Dirasakan", icon: "table" },
+  { key: "map", path: "/map", label: "Peta", shortLabel: "Peta", icon: "compass" },
+];
+
+const MOBILE_DROPUP_ITEMS: Array<NavItem & { desc: string }> = [
+  {
+    key: "significant",
+    path: "/m5",
+    label: "Signifikan M5+",
+    shortLabel: "M5+",
+    icon: "layers",
+    desc: "Katalog gempa M ≥ 5,0",
+  },
+  {
+    key: "tsunami",
+    path: "/tsunami",
+    label: "Tsunami",
+    shortLabel: "Tsunami",
+    icon: "wave",
+    desc: "Buletin & zona InaTEWS",
+  },
+  {
+    key: "damaging",
+    path: "/damage",
+    label: "Katalog Merusak",
+    shortLabel: "Merusak",
+    icon: "shield",
+    desc: "Riwayat gempa merusak",
+  },
+  {
+    key: "about",
+    path: "/about",
+    label: "Info & Parameter",
+    shortLabel: "Info",
+    icon: "info",
+    desc: "Skala MMI & sumber data",
+  },
+  {
+    key: "docs",
+    path: "/docs",
+    label: "Dokumentasi API",
+    shortLabel: "API",
+    icon: "code",
+    desc: "Endpoint JSON interaktif",
+  },
+];
+
 const TAB_TITLES: Record<RoneTabKey, [string, string]> = {
   home: ["Pantauan", "Terkini"],
   realtime: ["Deteksi", "Realtime"],
@@ -253,6 +303,7 @@ export function GempaRoneApp({
 
   // Responsive Mobile/Tablet UX states
   const [mobileAnalyticsOpen, setMobileAnalyticsOpen] = useState(false);
+  const [mobileDropupOpen, setMobileDropupOpen] = useState(false);
   const [tableDisplayMode, setTableDisplayMode] = useState<"auto" | "cards" | "table">(
     "auto"
   );
@@ -345,14 +396,34 @@ export function GempaRoneApp({
   // Switch navigation tab and update browser URL cleanly
   const navigateTab = useCallback((tab: RoneTabKey) => {
     setActiveTab(tab);
+    setMobileDropupOpen(false);
     setAlertsQuery("");
     setAlertsMinMag(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
     const navItem = NAV_ITEMS.find((n) => n.key === tab);
     const targetPath = tab === "docs" ? "/docs" : navItem?.path || "/";
     try {
-      window.history.pushState({}, "", targetPath);
+      window.history.pushState({ tab }, "", targetPath);
     } catch {}
+  }, []);
+
+  // Sync activeTab when user presses browser Back/Forward buttons
+  useEffect(() => {
+    const onPopState = () => {
+      const p = window.location.pathname.replace(/\/+$/, "") || "/";
+      if (p === "/realtime") setActiveTab("realtime");
+      else if (p === "/felt") setActiveTab("felt");
+      else if (p === "/m5") setActiveTab("significant");
+      else if (p === "/tsunami") setActiveTab("tsunami");
+      else if (p === "/damage") setActiveTab("damaging");
+      else if (p === "/map") setActiveTab("map");
+      else if (p === "/about") setActiveTab("about");
+      else if (p === "/docs") setActiveTab("docs");
+      else setActiveTab("home");
+      setMobileDropupOpen(false);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   // Real-time refresh of live endpoints (runs immediately on mount, every 15s, on tab focus, or on manual click)
@@ -2165,6 +2236,7 @@ export function GempaRoneApp({
                   </div>
 
                   <RoneLeafletMap
+                    key={`alerts-map-${activeTab}`}
                     id={`alerts-map-${activeTab}`}
                     className="map map--banner"
                     ariaLabel="Peta kejadian"
@@ -2876,6 +2948,7 @@ export function GempaRoneApp({
 
                 <section className="card map-banner-card" aria-label="Peta gempa merusak">
                   <RoneLeafletMap
+                    key="damage-map"
                     id="damage-map"
                     className="map map--banner"
                     ariaLabel="Peta gempa merusak"
@@ -3704,16 +3777,101 @@ export function GempaRoneApp({
           )}
         </div>
 
-        {/* Thumb-Friendly Mobile Bottom Navigation Bar (Visible on Phones < 680px) */}
+        {/* Compact Mobile Bottom Navigation Bar (4 Primary Items + 1 Dropup Menu) */}
+        {mobileDropupOpen ? (
+          <div
+            className="mobile-dropup-backdrop"
+            aria-hidden="true"
+            onClick={() => setMobileDropupOpen(false)}
+          />
+        ) : null}
+
+        <div
+          className={`mobile-dropup-sheet${mobileDropupOpen ? " is-open" : ""}`}
+          role="dialog"
+          aria-label="Menu navigasi lainnya"
+          aria-hidden={mobileDropupOpen ? "false" : "true"}
+        >
+          <div className="mobile-dropup-sheet__head">
+            <strong>Menu Lainnya</strong>
+            <button
+              type="button"
+              className="mobile-dropup-sheet__close"
+              aria-label="Tutup menu lainnya"
+              onClick={() => setMobileDropupOpen(false)}
+            >
+              <RoneIcon name="close" />
+            </button>
+          </div>
+
+          <div className="mobile-dropup-grid">
+            {MOBILE_DROPUP_ITEMS.map((item) => {
+              const isActive = activeTab === item.key;
+              return (
+                <button
+                  key={`drop-${item.key}`}
+                  type="button"
+                  className={`mobile-dropup-item${isActive ? " is-active" : ""}`}
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => navigateTab(item.key)}
+                >
+                  <span className="mobile-dropup-item__icon">
+                    <RoneIcon name={item.icon} />
+                  </span>
+                  <span className="mobile-dropup-item__text">
+                    <strong>{item.label}</strong>
+                    <small>{item.desc}</small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mobile-dropup-pod">
+            <span className="mobile-dropup-pod__label">
+              <RoneIcon name="pin" /> Kota Referensi Jarak:
+            </span>
+            <div className="mobile-dropup-pod__controls">
+              <select
+                aria-label="Pilih kota referensi jarak"
+                value={userPoint.isGps ? "gps" : userPoint.id}
+                onChange={(e) => {
+                  const found = INDONESIA_REFERENCE_CITIES.find(
+                    (c) => c.id === e.target.value
+                  );
+                  if (found) handleSelectCity(found);
+                }}
+              >
+                {userPoint.isGps ? (
+                  <option value="gps">GPS ({userPoint.label})</option>
+                ) : null}
+                {INDONESIA_REFERENCE_CITIES.map((city) => (
+                  <option key={city.id} value={city.id}>
+                    {city.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="mobile-dropup-pod__gps"
+                onClick={handleRequestGps}
+                disabled={gpsLoading}
+              >
+                {gpsLoading ? "…" : "GPS"}
+              </button>
+            </div>
+          </div>
+        </div>
+
         <nav className="mobile-bottom-nav" aria-label="Navigasi cepat perangkat seluler">
-          {NAV_ITEMS.map((item) => {
-            const isActive = activeTab === item.key;
+          {MOBILE_PRIMARY_NAV.map((item) => {
+            const isActive = activeTab === item.key && !mobileDropupOpen;
             return (
               <button
                 key={`mob-${item.key}`}
                 type="button"
                 className={`mobile-bottom-nav__btn${isActive ? " is-active" : ""}`}
-                aria-current={isActive ? "page" : undefined}
+                aria-current={activeTab === item.key ? "page" : undefined}
                 onClick={() => navigateTab(item.key)}
               >
                 <RoneIcon name={item.icon} />
@@ -3721,6 +3879,37 @@ export function GempaRoneApp({
               </button>
             );
           })}
+
+          {(() => {
+            const activeSecondary = MOBILE_DROPUP_ITEMS.find(
+              (item) => item.key === activeTab
+            );
+            const isMoreActive = Boolean(activeSecondary) || mobileDropupOpen;
+            return (
+              <button
+                type="button"
+                className={`mobile-bottom-nav__btn mobile-bottom-nav__btn--more${
+                  isMoreActive ? " is-active" : ""
+                }`}
+                aria-expanded={mobileDropupOpen ? "true" : "false"}
+                aria-haspopup="dialog"
+                onClick={() => setMobileDropupOpen((prev) => !prev)}
+              >
+                <RoneIcon
+                  name={
+                    mobileDropupOpen
+                      ? "close"
+                      : activeSecondary
+                        ? activeSecondary.icon
+                        : "layers"
+                  }
+                />
+                <span>
+                  {activeSecondary ? `${activeSecondary.shortLabel} ▴` : "Lainnya ▴"}
+                </span>
+              </button>
+            );
+          })()}
         </nav>
       </div>
 

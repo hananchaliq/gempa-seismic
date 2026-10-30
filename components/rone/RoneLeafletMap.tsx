@@ -108,6 +108,9 @@ export function RoneLeafletMap({
   useEffect(() => {
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
+    let settleTimer1: ReturnType<typeof setTimeout> | null = null;
+    let settleTimer2: ReturnType<typeof setTimeout> | null = null;
+    let docClickHandler: ((e: MouseEvent) => void) | null = null;
 
     async function init() {
       const L = (await import("leaflet")).default;
@@ -122,19 +125,21 @@ export function RoneLeafletMap({
           : INDONESIA.center;
       const initialZoom =
         centerOnLatest && latestEvent
-          ? latestZoom
+          ? Math.round(latestZoom)
           : narrow
             ? INDONESIA.zoom - 1
             : INDONESIA.zoom;
 
+      // IMPORTANT: Use integer zoomSnap: 1 so fitBounds and zoom controls never land on
+      // fractional zoom levels (e.g. 4.5), which would cause 404s on XYZ tile servers.
       const map = L.map(el, {
         center: initialCenter,
         zoom: initialZoom,
         minZoom: 2,
         maxZoom: 16,
         worldCopyJump: true,
-        zoomSnap: 0.5,
-        zoomDelta: 0.5,
+        zoomSnap: 1,
+        zoomDelta: 1,
         preferCanvas: true,
         scrollWheelZoom,
         zoomControl: false,
@@ -169,16 +174,20 @@ export function RoneLeafletMap({
             img.onerror = (err) => {
               done(err instanceof Error ? err : new Error("Tile error"), tile);
             };
+            const intZ = Math.max(0, Math.round(coords.z));
             img.src = L.Util.template(currentUrl, {
               r: "",
               s: "a",
-              x: coords.x,
-              y: coords.y,
-              z: coords.z,
+              x: Math.round(coords.x),
+              y: Math.round(coords.y),
+              z: intZ,
             });
             return tile;
           },
           setUrl(newUrl: string) {
+            if (currentUrl === newUrl) {
+              return this;
+            }
             currentUrl = newUrl;
             this.redraw();
             return this;
@@ -186,7 +195,12 @@ export function RoneLeafletMap({
         });
         return new (CanvasTileLayer as unknown as new (
           o?: LType.GridLayerOptions
-        ) => LType.TileLayer)(opts);
+        ) => LType.TileLayer)({
+          ...opts,
+          updateWhenIdle: false,
+          updateWhenZooming: false,
+          keepBuffer: 2,
+        });
       };
 
       const darkNow = document.documentElement.dataset.theme === "dark";
@@ -240,7 +254,7 @@ export function RoneLeafletMap({
         })
         .addTo(map);
 
-      // Custom BasemapControl identical to ridwaanhall/gempa
+      // Custom BasemapControl
       const BasemapControl = L.Control.extend({
         onAdd() {
           let current = base[0];
@@ -296,9 +310,10 @@ export function RoneLeafletMap({
             e.stopPropagation();
             setOpen(wrap.dataset.open !== "true");
           });
-          document.addEventListener("click", (e) => {
+          docClickHandler = (e: MouseEvent) => {
             if (!wrap.contains(e.target as Node)) setOpen(false);
-          });
+          };
+          document.addEventListener("click", docClickHandler);
           L.DomEvent.disableClickPropagation(wrap);
           L.DomEvent.disableScrollPropagation(wrap);
           return wrap;
@@ -314,12 +329,30 @@ export function RoneLeafletMap({
       quakesGroupRef.current = quakesGroup;
       mapRef.current = map;
 
-      if (fitArchipelago) {
-        map.fitBounds(INDONESIA_BOUNDS, { animate: false });
-      }
+      const applyArchipelagoFit = () => {
+        if (!mapRef.current) return;
+        mapRef.current.invalidateSize({ pan: false });
+        if (fitArchipelago) {
+          mapRef.current.fitBounds(INDONESIA_BOUNDS, {
+            animate: false,
+            maxZoom: 5,
+          });
+        }
+      };
+
+      applyArchipelagoFit();
+
+      // Ensure tiles and bounds are synced after tab transition / initial layout
+      settleTimer1 = setTimeout(applyArchipelagoFit, 80);
+      settleTimer2 = setTimeout(() => {
+        if (!mapRef.current) return;
+        mapRef.current.invalidateSize({ pan: false });
+      }, 280);
 
       resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize();
+        if (mapRef.current) {
+          mapRef.current.invalidateSize({ pan: false });
+        }
       });
       resizeObserver.observe(el);
       setMapReady(true);
@@ -329,6 +362,9 @@ export function RoneLeafletMap({
 
     return () => {
       cancelled = true;
+      if (settleTimer1) clearTimeout(settleTimer1);
+      if (settleTimer2) clearTimeout(settleTimer2);
+      if (docClickHandler) document.removeEventListener("click", docClickHandler);
       resizeObserver?.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
@@ -342,15 +378,6 @@ export function RoneLeafletMap({
     if (!mapReady || !canvasBaseRef.current || !canvasLabelsRef.current) return;
     canvasBaseRef.current.setUrl(canvasUrl(isDark, "Base"));
     canvasLabelsRef.current.setUrl(canvasUrl(isDark, "Reference"));
-    if (containerRef.current) {
-      const img = containerRef.current.querySelector('[data-base="neutral"] img');
-      if (img) {
-        img.setAttribute(
-          "src",
-          `${ESRI_ROOT}/Canvas/World_${isDark ? "Dark" : "Light"}_Gray_Base/MapServer/tile/4/8/13`
-        );
-      }
-    }
   }, [isDark, mapReady]);
 
   // Render extra layers (for Peta /map/ page)
@@ -502,9 +529,11 @@ export function RoneLeafletMap({
       latestMarkerRef.current = marker;
 
       if (centerOnLatest && hasCenteredRef.current !== latestEvent.event_id) {
-        map.setView([latestEvent.latitude, latestEvent.longitude], latestZoom, {
-          animate: false,
-        });
+        map.setView(
+          [latestEvent.latitude, latestEvent.longitude],
+          Math.round(latestZoom),
+          { animate: false }
+        );
         hasCenteredRef.current = latestEvent.event_id;
       }
     }
@@ -560,7 +589,7 @@ export function RoneLeafletMap({
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     map.flyTo(
       [selectedEvent.latitude, selectedEvent.longitude],
-      Math.max(map.getZoom(), 6),
+      Math.max(Math.round(map.getZoom()), 6),
       { duration: reduce ? 0 : 0.6 }
     );
   }, [selectedEvent, latestEvent, isDark, mapReady]);
