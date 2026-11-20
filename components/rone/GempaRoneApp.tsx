@@ -1,7 +1,17 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import {
+  AnimatedNumber,
+  CARD_REVEAL_VARIANTS,
+  PAGE_BLUR_VARIANTS,
+  PILL_SPRING,
+  playUiSound,
+  TAIMO_EASE,
+  TOAST_SPRING,
+  toggleThemeWithRipple,
+} from "@/lib/rone/motionSystem";
 import {
   fmtClockWib,
   fmtCoords,
@@ -31,15 +41,11 @@ import {
   weeklyBuckets,
 } from "@/lib/rone/format";
 import {
-  bridgeOfficialQuakesIntoRealtime,
-  fetchDirectBmkgFelt,
   fetchDirectBmkgLatest,
   fetchDirectBmkgRealtime,
-  fetchDirectBmkgSignificant,
-  mergeEarthquakeLists,
+  mergeArchive3mEvents,
   mergeRealtimeEvents,
   pickNewerEarthquake,
-  pickNewerEarthquakeList,
 } from "@/lib/rone/bmkgLiveDirect";
 import {
   FactsList,
@@ -101,56 +107,6 @@ const NAV_ITEMS: NavItem[] = [
   { key: "about", path: "/about", label: "Info", shortLabel: "Info", icon: "info" },
 ];
 
-const MOBILE_PRIMARY_NAV: NavItem[] = [
-  { key: "home", path: "/", label: "Terkini", shortLabel: "Terkini", icon: "home" },
-  { key: "realtime", path: "/realtime", label: "Realtime", shortLabel: "Realtime", icon: "pulse" },
-  { key: "felt", path: "/felt", label: "Dirasakan", shortLabel: "Dirasakan", icon: "table" },
-  { key: "map", path: "/map", label: "Peta", shortLabel: "Peta", icon: "compass" },
-];
-
-const MOBILE_DROPUP_ITEMS: Array<NavItem & { desc: string }> = [
-  {
-    key: "significant",
-    path: "/m5",
-    label: "Signifikan M5+",
-    shortLabel: "M5+",
-    icon: "layers",
-    desc: "Katalog gempa M ≥ 5,0",
-  },
-  {
-    key: "tsunami",
-    path: "/tsunami",
-    label: "Tsunami",
-    shortLabel: "Tsunami",
-    icon: "wave",
-    desc: "Buletin & zona InaTEWS",
-  },
-  {
-    key: "damaging",
-    path: "/damage",
-    label: "Katalog Merusak",
-    shortLabel: "Merusak",
-    icon: "shield",
-    desc: "Riwayat gempa merusak",
-  },
-  {
-    key: "about",
-    path: "/about",
-    label: "Info & Parameter",
-    shortLabel: "Info",
-    icon: "info",
-    desc: "Skala MMI & sumber data",
-  },
-  {
-    key: "docs",
-    path: "/docs",
-    label: "Dokumentasi API",
-    shortLabel: "API",
-    icon: "code",
-    desc: "Endpoint JSON interaktif",
-  },
-];
-
 const TAB_TITLES: Record<RoneTabKey, [string, string]> = {
   home: ["Pantauan", "Terkini"],
   realtime: ["Deteksi", "Realtime"],
@@ -164,7 +120,7 @@ const TAB_TITLES: Record<RoneTabKey, [string, string]> = {
 };
 
 const DAY_MS = 86_400_000;
-const AUTO_POLL_SECONDS = 15;
+const AUTO_POLL_SECONDS = 30;
 
 export interface InitialRonePayload {
   latest: RoneEarthquake | null;
@@ -220,7 +176,7 @@ export function GempaRoneApp({
     initialData.significant
   );
   const [tsunamiList, setTsunamiList] = useState<RoneTsunamiEvent[]>(initialData.tsunami);
-  const [archive3m] = useState<RoneRealtimeEvent[]>(initialData.archive3m);
+  const [archive3m, setArchive3m] = useState<RoneRealtimeEvent[]>(initialData.archive3m);
   const [damagingList, setDamagingList] = useState<RoneDamagingEvent[]>([]);
   const [damagingLoaded, setDamagingLoaded] = useState(false);
 
@@ -294,7 +250,14 @@ export function GempaRoneApp({
     items: MediaItem[];
     index: number;
   } | null>(null);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastState, setToastState] = useState<{
+    id: number;
+    msg: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [hoveredWeekIdx, setHoveredWeekIdx] = useState<number | null>(null);
 
   // API Playground state for /docs
   const [apiPlayPath, setApiPlayPath] = useState("/api/v1/earthquakes/latest");
@@ -303,15 +266,25 @@ export function GempaRoneApp({
 
   // Responsive Mobile/Tablet UX states
   const [mobileAnalyticsOpen, setMobileAnalyticsOpen] = useState(false);
-  const [mobileDropupOpen, setMobileDropupOpen] = useState(false);
   const [tableDisplayMode, setTableDisplayMode] = useState<"auto" | "cards" | "table">(
     "auto"
   );
 
-  const showToast = useCallback((msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3200);
-  }, []);
+  const showToast = useCallback(
+    (msg: string, action?: { label: string; onClick: () => void }) => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+      setToastState({
+        id: Date.now(),
+        msg,
+        actionLabel: action?.label,
+        onAction: action?.onClick,
+      });
+      toastTimerRef.current = setTimeout(() => {
+        setToastState(null);
+      }, 3600);
+    },
+    []
+  );
 
   // Theme & saved preferences initialization (Defaults to Light Monochrome Alabaster & Obsidian)
   useEffect(() => {
@@ -331,13 +304,15 @@ export function GempaRoneApp({
     }
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = (e?: React.MouseEvent<HTMLButtonElement>) => {
     const next = !isDark;
-    setIsDark(next);
-    document.documentElement.dataset.theme = next ? "dark" : "light";
-    try {
-      window.localStorage.setItem("theme_monochrome", next ? "dark" : "light");
-    } catch {}
+    toggleThemeWithRipple(e || null, () => {
+      setIsDark(next);
+      document.documentElement.dataset.theme = next ? "dark" : "light";
+      try {
+        window.localStorage.setItem("theme_monochrome", next ? "dark" : "light");
+      } catch {}
+    });
   };
 
   const toggleSoundAlert = () => {
@@ -395,38 +370,19 @@ export function GempaRoneApp({
 
   // Switch navigation tab and update browser URL cleanly
   const navigateTab = useCallback((tab: RoneTabKey) => {
+    playUiSound("tab");
     setActiveTab(tab);
-    setMobileDropupOpen(false);
     setAlertsQuery("");
     setAlertsMinMag(0);
     window.scrollTo({ top: 0, behavior: "smooth" });
     const navItem = NAV_ITEMS.find((n) => n.key === tab);
     const targetPath = tab === "docs" ? "/docs" : navItem?.path || "/";
     try {
-      window.history.pushState({ tab }, "", targetPath);
+      window.history.pushState({}, "", targetPath);
     } catch {}
   }, []);
 
-  // Sync activeTab when user presses browser Back/Forward buttons
-  useEffect(() => {
-    const onPopState = () => {
-      const p = window.location.pathname.replace(/\/+$/, "") || "/";
-      if (p === "/realtime") setActiveTab("realtime");
-      else if (p === "/felt") setActiveTab("felt");
-      else if (p === "/m5") setActiveTab("significant");
-      else if (p === "/tsunami") setActiveTab("tsunami");
-      else if (p === "/damage") setActiveTab("damaging");
-      else if (p === "/map") setActiveTab("map");
-      else if (p === "/about") setActiveTab("about");
-      else if (p === "/docs") setActiveTab("docs");
-      else setActiveTab("home");
-      setMobileDropupOpen(false);
-    };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  // Real-time refresh of live endpoints (runs immediately on mount, every 15s, on tab focus, or on manual click)
+  // Real-time refresh of live endpoints (runs immediately on mount, every 30s, or on manual click)
   const refreshLiveFeeds = useCallback(
     async (manual = false) => {
       setIsSyncing(true);
@@ -439,10 +395,9 @@ export function GempaRoneApp({
           feltRes,
           sigRes,
           tsRes,
+          archive3mRes,
           directLatest,
           directRt,
-          directFelt,
-          directSig,
         ] = await Promise.all([
           fetch(`/api/v1/earthquakes/latest${qs}`, { cache: "no-store" }).catch(() => null),
           fetch(`/api/v1/earthquakes/realtime?limit=300&fresh=1&t=${ts}`, {
@@ -453,59 +408,29 @@ export function GempaRoneApp({
             () => null
           ),
           fetch(`/api/v1/tsunami${qs}`, { cache: "no-store" }).catch(() => null),
+          fetch(`/api/v1/earthquakes/archive/3m${qs}`, { cache: "no-store" }).catch(
+            () => null
+          ),
           fetchDirectBmkgLatest().catch(() => null),
           fetchDirectBmkgRealtime(300, 0).catch(() => []),
-          fetchDirectBmkgFelt().catch(() => []),
-          fetchDirectBmkgSignificant().catch(() => []),
         ]);
-
-        let apiFelt: RoneEarthquake[] = [];
-        if (feltRes?.ok) {
-          const j = await feltRes.json().catch(() => null);
-          if (Array.isArray(j?.data)) apiFelt = j.data;
-        }
-        let bestFelt = pickNewerEarthquakeList(directFelt, apiFelt);
-
-        let apiSig: RoneEarthquake[] = [];
-        if (sigRes?.ok) {
-          const j = await sigRes.json().catch(() => null);
-          if (Array.isArray(j?.data)) apiSig = j.data;
-        }
-        let bestSig = pickNewerEarthquakeList(directSig, apiSig);
 
         let apiLatest: RoneEarthquake | null = null;
         if (latestRes?.ok) {
           const j = await latestRes.json().catch(() => null);
           if (j?.data) apiLatest = j.data;
         }
-        let bestLatest = pickNewerEarthquake(directLatest, apiLatest);
-        if (bestFelt[0]) bestLatest = pickNewerEarthquake(bestLatest, bestFelt[0]);
-        if (bestSig[0]) bestLatest = pickNewerEarthquake(bestLatest, bestSig[0]);
-
+        const bestLatest = pickNewerEarthquake(apiLatest, directLatest);
         if (bestLatest) {
           setLatest(bestLatest);
-          if (bestLatest.felt) {
-            bestFelt = mergeEarthquakeLists([bestLatest], bestFelt, 45);
-          }
-          if (bestLatest.magnitude >= 5.0) {
-            bestSig = mergeEarthquakeLists([bestLatest], bestSig, 45);
-          }
         }
-
-        if (bestFelt.length > 0) setFeltList(bestFelt);
-        if (bestSig.length > 0) setSignificantList(bestSig);
 
         let apiRt: RoneRealtimeEvent[] = [];
         if (rtRes?.ok) {
           const j = await rtRes.json().catch(() => null);
           if (Array.isArray(j?.data)) apiRt = j.data;
         }
-        const combinedRt = mergeRealtimeEvents(directRt, apiRt, 300);
-        const mergedRt = bridgeOfficialQuakesIntoRealtime(
-          combinedRt,
-          [bestLatest, bestFelt[0], bestSig[0]],
-          300
-        );
+        const mergedRt = mergeRealtimeEvents(directRt, apiRt, 300);
         if (mergedRt.length > 0) {
           const newest: RoneRealtimeEvent = mergedRt[0];
           if (
@@ -523,17 +448,29 @@ export function GempaRoneApp({
           setRealtime(mergedRt);
         }
 
+        if (feltRes?.ok) {
+          const j = await feltRes.json().catch(() => null);
+          if (Array.isArray(j?.data) && j.data.length > 0) setFeltList(j.data);
+        }
+        if (sigRes?.ok) {
+          const j = await sigRes.json().catch(() => null);
+          if (Array.isArray(j?.data) && j.data.length > 0) setSignificantList(j.data);
+        }
         if (tsRes?.ok) {
           const j = await tsRes.json().catch(() => null);
           if (Array.isArray(j?.data) && j.data.length > 0) setTsunamiList(j.data);
+        }
+        if (archive3mRes?.ok) {
+          const j = await archive3mRes.json().catch(() => null);
+          if (Array.isArray(j?.data) && j.data.length > 0) setArchive3m(j.data);
         }
         const now = Date.now();
         setNowMs(now);
         setLiveTimeLabel(`Diperbarui ${fmtClockWib(new Date(now))}`);
         setLiveOk(true);
         setPollCountdown(AUTO_POLL_SECONDS);
+        setRefreshCycle((c) => c + 1);
         if (manual) {
-          setRefreshCycle((c) => c + 1);
           showToast("Data real-time BMKG berhasil disinkronkan");
         }
       } catch {
@@ -548,40 +485,26 @@ export function GempaRoneApp({
     [showToast, soundEnabled]
   );
 
-  // Immediate live sync on mount + 15s auto-poll + instant sync on tab focus/visibility
+  // Run live sync shortly after SSR hydration, plus 1-second ticker for relative time & 30s auto-poll
   useEffect(() => {
-    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-    const isAuditBot = /Chrome-Lighthouse|PageSpeed|GTmetrix/i.test(ua);
-    const initialSyncTimer = setTimeout(
-      () => {
-        refreshLiveFeeds(false);
-      },
-      isAuditBot ? 12000 : 60
-    );
-
-    const pollTimer = setInterval(() => {
+    const initialTimer = setTimeout(() => {
       refreshLiveFeeds(false);
-    }, AUTO_POLL_SECONDS * 1000);
+    }, 400);
+    return () => clearTimeout(initialTimer);
+  }, [refreshLiveFeeds]);
 
-    const clockTimer = setInterval(() => {
+  useEffect(() => {
+    const ticker = setInterval(() => {
       setNowMs(Date.now());
-    }, 10000);
-
-    const onVisibilityOrFocus = () => {
-      if (document.visibilityState === "visible" && !isAuditBot) {
-        refreshLiveFeeds(false);
-      }
-    };
-    window.addEventListener("focus", onVisibilityOrFocus);
-    document.addEventListener("visibilitychange", onVisibilityOrFocus);
-
-    return () => {
-      clearTimeout(initialSyncTimer);
-      clearInterval(pollTimer);
-      clearInterval(clockTimer);
-      window.removeEventListener("focus", onVisibilityOrFocus);
-      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
-    };
+      setPollCountdown((prev) => {
+        if (prev <= 1) {
+          refreshLiveFeeds(false);
+          return AUTO_POLL_SECONDS;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(ticker);
   }, [refreshLiveFeeds]);
 
   // Lazy load damaging earthquakes when Merusak tab is opened
@@ -768,8 +691,21 @@ export function GempaRoneApp({
     };
   }, [activeHeroQuake, userPoint, summaryStats.activeTsunami]);
 
+  const archiveMinuteBucket = Math.floor(nowMs / 60_000);
+  const liveArchive3m = useMemo(
+    () =>
+      mergeArchive3mEvents(
+        archive3m,
+        realtime,
+        significantList,
+        feltList,
+        archiveMinuteBucket * 60_000
+      ),
+    [archive3m, realtime, significantList, feltList, archiveMinuteBucket]
+  );
+
   const weeklyChartData = useMemo(() => {
-    const weeks = weeklyBuckets(archive3m);
+    const weeks = weeklyBuckets(liveArchive3m, archiveMinuteBucket * 60_000);
     if (!weeks.length) return null;
     const peak = weeks.reduce((a, b) => (b.count > a.count ? b : a), weeks[0]);
     const step = peak.count > 50 ? 20 : 10;
@@ -777,7 +713,7 @@ export function GempaRoneApp({
     const total = weeks.reduce((n, w) => n + w.count, 0);
     const average = Math.round(total / weeks.length);
     return { weeks, peak, top, total, average };
-  }, [archive3m]);
+  }, [liveArchive3m, archiveMinuteBucket]);
 
   // Realtime page filtered + sorted rows
   const filteredRealtime = useMemo(() => {
@@ -910,35 +846,51 @@ export function GempaRoneApp({
             {NAV_ITEMS.map((item) => {
               const isActive = activeTab === item.key;
               return (
-                <button
+                <motion.button
                   key={item.key}
                   type="button"
                   className="sidebar-nav__item"
                   aria-current={isActive ? "page" : undefined}
+                  whileTap={{ scale: 0.975 }}
                   onClick={() => navigateTab(item.key)}
                 >
+                  {isActive ? (
+                    <motion.span
+                      layoutId="sidebar-active-pill"
+                      className="sidebar-nav__active-pill"
+                      transition={PILL_SPRING}
+                    />
+                  ) : null}
                   <span className="sidebar-nav__icon">
                     <RoneIcon name={item.icon} />
                   </span>
                   <span className="sidebar-nav__label">{item.label}</span>
-                </button>
+                </motion.button>
               );
             })}
-            <button
+            <motion.button
               type="button"
               className="sidebar-nav__item"
               aria-current={activeTab === "docs" ? "page" : undefined}
+              whileTap={{ scale: 0.975 }}
               onClick={() => navigateTab("docs")}
             >
+              {activeTab === "docs" ? (
+                <motion.span
+                  layoutId="sidebar-active-pill"
+                  className="sidebar-nav__active-pill"
+                  transition={PILL_SPRING}
+                />
+              ) : null}
               <span className="sidebar-nav__icon">
                 <RoneIcon name="code" />
               </span>
               <span className="sidebar-nav__label">API</span>
-            </button>
+            </motion.button>
           </nav>
 
           {/* Compact Location Reference Pod */}
-          <div className="sidebar-pod" role="region" aria-label="Lokasi referensi kalkulasi jarak">
+          <div className="sidebar-pod" aria-label="Lokasi referensi kalkulasi jarak">
             <div className="sidebar-pod__controls">
               <span className="sidebar-pod__pin" aria-hidden="true">
                 <RoneIcon name="pin" />
@@ -984,27 +936,54 @@ export function GempaRoneApp({
           <header className="workspace-topbar">
             <div className="workspace-topbar__row1">
               <div className="workspace-title-group">
-                <h1 className="workspace-display-title">
-                  {titleLine1} {titleLine2}
-                </h1>
+                <AnimatePresence mode="wait">
+                  <motion.h1
+                    key={activeTab}
+                    className="workspace-display-title"
+                    initial={{ opacity: 0, y: 6, filter: "blur(5px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+                    transition={{ duration: 0.24, ease: TAIMO_EASE }}
+                  >
+                    {titleLine1} {titleLine2}
+                  </motion.h1>
+                </AnimatePresence>
                 {activeTab === "home" && (
                   <div className="workspace-mode-pills" role="group" aria-label="Mode pantauan cepat">
                     <button
                       type="button"
                       className={`mode-pill${heroMode === "realtime" ? " is-active" : ""}`}
                       onClick={() => {
+                        if (heroMode !== "realtime") playUiSound("tab");
                         setHeroMode("realtime");
                         setFocusedRealtime(null);
                       }}
                     >
-                      Realtime
+                      {heroMode === "realtime" ? (
+                        <motion.span
+                          layoutId="hero-mode-pill"
+                          className="mode-pill__bg"
+                          transition={PILL_SPRING}
+                        />
+                      ) : null}
+                      <span className="mode-pill__text">Realtime</span>
                     </button>
                     <button
                       type="button"
                       className={`mode-pill${heroMode === "felt" ? " is-active" : ""}`}
-                      onClick={() => setHeroMode("felt")}
+                      onClick={() => {
+                        if (heroMode !== "felt") playUiSound("tab");
+                        setHeroMode("felt");
+                      }}
                     >
-                      Dirasakan
+                      {heroMode === "felt" ? (
+                        <motion.span
+                          layoutId="hero-mode-pill"
+                          className="mode-pill__bg"
+                          transition={PILL_SPRING}
+                        />
+                      ) : null}
+                      <span className="mode-pill__text">Dirasakan</span>
                     </button>
                   </div>
                 )}
@@ -1095,22 +1074,32 @@ export function GempaRoneApp({
                   <RoneIcon name="refresh" />
                 </button>
 
-                <button
+                <motion.button
                   type="button"
                   className="circle-btn circle-btn--ivory"
                   id="theme-toggle"
                   aria-label="Ganti tema terang/gelap"
-                  onClick={toggleTheme}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={(e) => toggleTheme(e)}
                   title="Ganti tema Terang / Gelap"
                 >
                   <RoneIcon name="moon" className="icon theme-icon-light" />
                   <RoneIcon name="sun" className="icon theme-icon-dark" />
-                </button>
+                </motion.button>
               </div>
             </div>
           </header>
 
           <main id="main" className="workspace-body">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`view-${activeTab}`}
+                className="workspace-view-stage"
+                variants={PAGE_BLUR_VARIANTS}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+              >
             {/* ==================== 1. TERKINI (HOME) — REFERENCE BENTO LAYOUT ==================== */}
             {activeTab === "home" && (
               <div className="bento-reference">
@@ -1121,17 +1110,15 @@ export function GempaRoneApp({
                   }`}
                   className="card bento-ref__timeline"
                   aria-labelledby="latest-title"
-                  initial={{ opacity: 0.92, y: 8, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                  variants={CARD_REVEAL_VARIANTS}
                 >
                   <div className="hero__top">
                     <motion.div
                       id="latest-dial"
                       key={`dial-${refreshCycle}-${activeHeroQuake?.event_id}`}
-                      initial={{ scale: 0.92, opacity: 0.9 }}
+                      initial={{ scale: 0.9, opacity: 0.75 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.38 }}
                     >
                       {activeHeroQuake ? (
                         <MagDial magnitude={activeHeroQuake.magnitude} />
@@ -1173,7 +1160,6 @@ export function GempaRoneApp({
                   {heroLaymanSummary && activeHeroQuake ? (
                     <div
                       className="layman-summary"
-                      role="region"
                       aria-label="Ringkasan dampak gempa untuk masyarakat"
                     >
                       <div className="layman-summary__top">
@@ -1223,13 +1209,13 @@ export function GempaRoneApp({
                         <div className="layman-tile">
                           <span className="layman-tile__label">Jarak</span>
                           <strong className="layman-tile__val mono">
-                            {fmtNumber(heroLaymanSummary.surfaceDist)} km
+                            <AnimatedNumber value={heroLaymanSummary.surfaceDist} duration={460} /> km
                           </strong>
                         </div>
                         <div className="layman-tile">
                           <span className="layman-tile__label">Kedalaman</span>
                           <strong className="layman-tile__val mono">
-                            {fmtDepth(activeHeroQuake.depth_km)}
+                            <AnimatedNumber value={activeHeroQuake.depth_km} duration={420} /> km
                           </strong>
                         </div>
                         <div className="layman-tile">
@@ -1298,9 +1284,9 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-label="Kurva magnitudo dan distribusi kedalaman"
-                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.34, delay: 0.03, ease: [0.22, 1, 0.36, 1] }}
+                  initial={{ opacity: 0.85, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.34, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <SeismicMagnitudeSplineCard
                     events={realtime}
@@ -1317,10 +1303,11 @@ export function GempaRoneApp({
 
                 {/* TOP-RIGHT CARD: OBSIDIAN BLACK SPOTLIGHT & INTERACTIVE MAP (Matches "Aperçu du fichier" dark card) */}
                 <motion.section
+                  key={`map-col-${refreshCycle}`}
                   className="card card--obsidian bento-ref__spotlight"
                   aria-label="Peta episentrum dan kartu pantauan prioritas"
-                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0.88, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="obsidian-card__head">
@@ -1406,8 +1393,8 @@ export function GempaRoneApp({
                   key={`recent-feed-${refreshCycle}`}
                   className="card bento-ref__files"
                   aria-labelledby="recent-heading"
-                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0.85, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="files-card__head">
@@ -1481,8 +1468,8 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="summary-heading"
-                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0.85, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
                 >
                   {/* Top Summary Strip inside Equipe Card */}
@@ -1496,7 +1483,9 @@ export function GempaRoneApp({
                       <div className="equipe-metric">
                         <span className="equipe-metric__label">24 Jam</span>
                         <div className="equipe-metric__row">
-                          <strong className="mono">{fmtNumber(summaryStats.day.length)}</strong>
+                          <strong className="mono">
+                            <AnimatedNumber value={summaryStats.day.length} duration={560} />
+                          </strong>
                           <span className="equipe-metric__bar" />
                           <small className="mono">/{realtime.length}</small>
                         </div>
@@ -1506,9 +1495,18 @@ export function GempaRoneApp({
                         <span className="equipe-metric__label">Terkuat 24j</span>
                         <div className="equipe-metric__row">
                           <strong className="mono">
-                            {summaryStats.strongest
-                              ? `M ${fmtMag(summaryStats.strongest.magnitude)}`
-                              : "–"}
+                            {summaryStats.strongest ? (
+                              <>
+                                M{" "}
+                                <AnimatedNumber
+                                  value={summaryStats.strongest.magnitude}
+                                  decimals={1}
+                                  duration={560}
+                                />
+                              </>
+                            ) : (
+                              "–"
+                            )}
                           </strong>
                           <span className="equipe-metric__bar" />
                           <small>
@@ -1522,7 +1520,9 @@ export function GempaRoneApp({
                       <div className="equipe-metric">
                         <span className="equipe-metric__label">M 5+ (7 Hari)</span>
                         <div className="equipe-metric__row">
-                          <strong className="mono">{fmtNumber(summaryStats.m5week.length)}</strong>
+                          <strong className="mono">
+                            <AnimatedNumber value={summaryStats.m5week.length} duration={560} />
+                          </strong>
                           <span className="equipe-metric__bar" />
                           <small>
                             {summaryStats.activeTsunami ? "Tsunami Aktif" : "Aman"}
@@ -1536,117 +1536,118 @@ export function GempaRoneApp({
                       className="equipe-summary__spark"
                       aria-hidden="true"
                     >
-                      <path
+                      <motion.path
                         d="M 4 28 C 22 10, 38 30, 56 16 C 74 4, 90 26, 106 14"
                         fill="none"
                         stroke="var(--ink)"
                         strokeWidth="2"
                         strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0.4 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ duration: 0.85, ease: TAIMO_EASE }}
                       />
-                      <path
+                      <motion.path
                         d="M 4 22 C 24 30, 42 12, 60 24 C 78 32, 92 10, 106 22"
                         fill="none"
                         stroke="var(--ink-3)"
                         strokeWidth="1.4"
                         strokeOpacity="0.5"
                         strokeLinecap="round"
+                        initial={{ pathLength: 0, opacity: 0.25 }}
+                        animate={{ pathLength: 1, opacity: 0.5 }}
+                        transition={{ duration: 0.95, delay: 0.1, ease: TAIMO_EASE }}
                       />
                     </svg>
                   </div>
 
                   {/* Nested Obsidian Black 3-Column Telemetry Progress Card */}
-                  <div className="obsidian-trio">
-                    <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__prog-label">
-                        <strong>Dangkal (&lt;60 km)</strong>
-                        <span className="mono">
-                          {Math.round(
-                            (summaryStats.shallowCount / Math.max(1, realtime.length)) * 100
-                          )}
-                          %
-                        </span>
-                      </div>
-                      <div className="obsidian-trio__bar">
-                        <span
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              Math.round(
-                                (summaryStats.shallowCount /
-                                  Math.max(1, realtime.length)) *
-                                  100
-                              )
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="obsidian-trio__meta">
-                        {fmtNumber(summaryStats.shallowCount)} kejadian
-                      </span>
-                    </div>
+                  {(() => {
+                    const totalRt = Math.max(1, realtime.length);
+                    const shallowPct = Math.min(
+                      100,
+                      Math.round((summaryStats.shallowCount / totalRt) * 100)
+                    );
+                    const subductionPct = Math.min(
+                      100,
+                      Math.round((summaryStats.subductionCount / totalRt) * 100)
+                    );
+                    const confirmedPct = Math.min(
+                      100,
+                      Math.round((summaryStats.confirmedCount / totalRt) * 100)
+                    );
+                    return (
+                      <div className="obsidian-trio">
+                        <div className="obsidian-trio__col">
+                          <div className="obsidian-trio__prog-label">
+                            <strong>Dangkal (&lt;60 km)</strong>
+                            <span className="mono">
+                              <AnimatedNumber value={shallowPct} duration={540} suffix="%" />
+                            </span>
+                          </div>
+                          <div className="obsidian-trio__bar">
+                            <motion.span
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.65, delay: 0.08, ease: TAIMO_EASE }}
+                              style={{
+                                width: `${shallowPct}%`,
+                                transformOrigin: "left center",
+                              }}
+                            />
+                          </div>
+                          <span className="obsidian-trio__meta">
+                            <AnimatedNumber value={summaryStats.shallowCount} duration={540} /> kejadian
+                          </span>
+                        </div>
 
-                    <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__prog-label">
-                        <strong>Subduksi (60–300 km)</strong>
-                        <span className="mono">
-                          {Math.round(
-                            (summaryStats.subductionCount /
-                              Math.max(1, realtime.length)) *
-                              100
-                          )}
-                          %
-                        </span>
-                      </div>
-                      <div className="obsidian-trio__bar">
-                        <span
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              Math.round(
-                                (summaryStats.subductionCount /
-                                  Math.max(1, realtime.length)) *
-                                  100
-                              )
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="obsidian-trio__meta">
-                        {fmtNumber(summaryStats.subductionCount)} kejadian
-                      </span>
-                    </div>
+                        <div className="obsidian-trio__col">
+                          <div className="obsidian-trio__prog-label">
+                            <strong>Subduksi (60–300 km)</strong>
+                            <span className="mono">
+                              <AnimatedNumber value={subductionPct} duration={540} suffix="%" />
+                            </span>
+                          </div>
+                          <div className="obsidian-trio__bar">
+                            <motion.span
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.65, delay: 0.16, ease: TAIMO_EASE }}
+                              style={{
+                                width: `${subductionPct}%`,
+                                transformOrigin: "left center",
+                              }}
+                            />
+                          </div>
+                          <span className="obsidian-trio__meta">
+                            <AnimatedNumber value={summaryStats.subductionCount} duration={540} /> kejadian
+                          </span>
+                        </div>
 
-                    <div className="obsidian-trio__col">
-                      <div className="obsidian-trio__prog-label">
-                        <strong>Terkonfirmasi</strong>
-                        <span className="mono">
-                          {Math.round(
-                            (summaryStats.confirmedCount /
-                              Math.max(1, realtime.length)) *
-                              100
-                          )}
-                          %
-                        </span>
+                        <div className="obsidian-trio__col">
+                          <div className="obsidian-trio__prog-label">
+                            <strong>Terkonfirmasi</strong>
+                            <span className="mono">
+                              <AnimatedNumber value={confirmedPct} duration={540} suffix="%" />
+                            </span>
+                          </div>
+                          <div className="obsidian-trio__bar">
+                            <motion.span
+                              initial={{ scaleX: 0 }}
+                              animate={{ scaleX: 1 }}
+                              transition={{ duration: 0.65, delay: 0.24, ease: TAIMO_EASE }}
+                              style={{
+                                width: `${confirmedPct}%`,
+                                transformOrigin: "left center",
+                              }}
+                            />
+                          </div>
+                          <span className="obsidian-trio__meta">
+                            <AnimatedNumber value={summaryStats.confirmedCount} duration={540} /> kejadian
+                          </span>
+                        </div>
                       </div>
-                      <div className="obsidian-trio__bar">
-                        <span
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              Math.round(
-                                (summaryStats.confirmedCount /
-                                  Math.max(1, realtime.length)) *
-                                  100
-                              )
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                      <span className="obsidian-trio__meta">
-                        {fmtNumber(summaryStats.confirmedCount)} kejadian
-                      </span>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {/* Interactive Distance & P/S Wave Calculator */}
                   <EpicenterDistanceBar
@@ -1694,8 +1695,8 @@ export function GempaRoneApp({
                     mobileAnalyticsOpen ? " is-open-mobile" : ""
                   }`}
                   aria-labelledby="chart-heading"
-                  initial={{ opacity: 0.92, y: 10, scale: 0.992 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  initial={{ opacity: 0.85, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.36, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
                 >
                   <div className="card__head">
@@ -1722,22 +1723,33 @@ export function GempaRoneApp({
                               </span>
                             ))}
                           </div>
-                          <div className="chart__cols">
+                          <div
+                            className="chart__cols"
+                            onMouseLeave={() => setHoveredWeekIdx(null)}
+                          >
                             {weeklyChartData.weeks.map((w, i) => {
                               const isPeak = w === weeklyChartData.peak;
+                              const isHovered = hoveredWeekIdx === i;
+                              const isDimmed = hoveredWeekIdx !== null && hoveredWeekIdx !== i;
                               const pct = `${(w.count / weeklyChartData.top) * 100}%`;
                               return (
-                                <div
+                                <button
                                   key={`${w.start}-${refreshCycle}`}
+                                  type="button"
                                   className={`chart__col${isPeak ? " is-peak" : ""}${
                                     w.partial ? " is-partial" : ""
+                                  }${isHovered ? " is-hovered" : ""}${
+                                    isDimmed ? " is-dimmed" : ""
                                   }`}
-                                  title={`${w.label}: ${w.count} gempa`}
+                                  aria-label={`${w.label}: ${w.count} gempa`}
+                                  onMouseEnter={() => setHoveredWeekIdx(i)}
+                                  onFocus={() => setHoveredWeekIdx(i)}
+                                  onBlur={() => setHoveredWeekIdx(null)}
                                   style={
                                     { "--h": pct, "--delay": `${i * 28}ms` } as React.CSSProperties
                                   }
                                 >
-                                  {isPeak ? (
+                                  {isPeak || isHovered ? (
                                     <span className="chart__value mono">
                                       {fmtNumber(w.count)}
                                     </span>
@@ -1746,7 +1758,17 @@ export function GempaRoneApp({
                                       {fmtNumber(w.count)}
                                     </span>
                                   )}
-                                  <span className="chart__bar" />
+                                  <motion.span
+                                    className="chart__bar"
+                                    initial={{ scaleY: 0, opacity: 0.2 }}
+                                    animate={{ scaleY: 1, opacity: 1 }}
+                                    transition={{
+                                      duration: 0.52,
+                                      delay: 0.05 + i * 0.028,
+                                      ease: TAIMO_EASE,
+                                    }}
+                                    style={{ transformOrigin: "bottom center" }}
+                                  />
                                   <span className="chart__tip" role="tooltip">
                                     <strong>{fmtNumber(w.count)} gempa</strong>
                                     <span>{w.label}</span>
@@ -1762,7 +1784,7 @@ export function GempaRoneApp({
                                       ? w.shortLabel
                                       : ""}
                                   </span>
-                                </div>
+                                </button>
                               );
                             })}
                           </div>
@@ -1925,16 +1947,29 @@ export function GempaRoneApp({
                         { min: 3, label: "M 3,0+" },
                         { min: 4, label: "M 4,0+" },
                         { min: 5, label: "M 5,0+" },
-                      ].map((b) => (
-                        <button
-                          key={b.min}
-                          type="button"
-                          aria-pressed={rtMinMag === b.min ? "true" : "false"}
-                          onClick={() => setRtMinMag(b.min)}
-                        >
-                          {b.label}
-                        </button>
-                      ))}
+                      ].map((b) => {
+                        const pressed = rtMinMag === b.min;
+                        return (
+                          <button
+                            key={b.min}
+                            type="button"
+                            aria-pressed={pressed ? "true" : "false"}
+                            onClick={() => {
+                              if (!pressed) playUiSound("tab");
+                              setRtMinMag(b.min);
+                            }}
+                          >
+                            {pressed ? (
+                              <motion.span
+                                layoutId="rt-mag-pill"
+                                className="segmented__pill"
+                                transition={PILL_SPRING}
+                              />
+                            ) : null}
+                            <span className="segmented__text">{b.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <label className="field field--search">
@@ -1961,16 +1996,29 @@ export function GempaRoneApp({
                           { id: "cards", label: "Kartu Ringkas" },
                           { id: "table", label: "Tabel Penuh" },
                         ] as const
-                      ).map((vm) => (
-                        <button
-                          key={vm.id}
-                          type="button"
-                          aria-pressed={tableDisplayMode === vm.id ? "true" : "false"}
-                          onClick={() => setTableDisplayMode(vm.id)}
-                        >
-                          {vm.label}
-                        </button>
-                      ))}
+                      ).map((vm) => {
+                        const pressed = tableDisplayMode === vm.id;
+                        return (
+                          <button
+                            key={vm.id}
+                            type="button"
+                            aria-pressed={pressed ? "true" : "false"}
+                            onClick={() => {
+                              if (!pressed) playUiSound("tab");
+                              setTableDisplayMode(vm.id);
+                            }}
+                          >
+                            {pressed ? (
+                              <motion.span
+                                layoutId="rt-vm-pill"
+                                className="segmented__pill"
+                                transition={PILL_SPRING}
+                              />
+                            ) : null}
+                            <span className="segmented__text">{vm.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <span className="toolbar__count mono" aria-live="polite">
                       {fmtNumber(filteredRealtime.length)} / {fmtNumber(realtime.length)} deteksi
@@ -2236,7 +2284,6 @@ export function GempaRoneApp({
                   </div>
 
                   <RoneLeafletMap
-                    key={`alerts-map-${activeTab}`}
                     id={`alerts-map-${activeTab}`}
                     className="map map--banner"
                     ariaLabel="Peta kejadian"
@@ -2274,16 +2321,29 @@ export function GempaRoneApp({
                         { min: 4, label: "M 4,0+" },
                         { min: 5, label: "M 5,0+" },
                         { min: 6, label: "M 6,0+" },
-                      ].map((b) => (
-                        <button
-                          key={b.min}
-                          type="button"
-                          aria-pressed={alertsMinMag === b.min ? "true" : "false"}
-                          onClick={() => setAlertsMinMag(b.min)}
-                        >
-                          {b.label}
-                        </button>
-                      ))}
+                      ].map((b) => {
+                        const pressed = alertsMinMag === b.min;
+                        return (
+                          <button
+                            key={b.min}
+                            type="button"
+                            aria-pressed={pressed ? "true" : "false"}
+                            onClick={() => {
+                              if (!pressed) playUiSound("tab");
+                              setAlertsMinMag(b.min);
+                            }}
+                          >
+                            {pressed ? (
+                              <motion.span
+                                layoutId="alerts-mag-pill"
+                                className="segmented__pill"
+                                transition={PILL_SPRING}
+                              />
+                            ) : null}
+                            <span className="segmented__text">{b.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <label className="field field--search">
@@ -2313,16 +2373,29 @@ export function GempaRoneApp({
                           { id: "cards", label: "Kartu Ringkas" },
                           { id: "table", label: "Tabel Penuh" },
                         ] as const
-                      ).map((vm) => (
-                        <button
-                          key={vm.id}
-                          type="button"
-                          aria-pressed={tableDisplayMode === vm.id ? "true" : "false"}
-                          onClick={() => setTableDisplayMode(vm.id)}
-                        >
-                          {vm.label}
-                        </button>
-                      ))}
+                      ).map((vm) => {
+                        const pressed = tableDisplayMode === vm.id;
+                        return (
+                          <button
+                            key={vm.id}
+                            type="button"
+                            aria-pressed={pressed ? "true" : "false"}
+                            onClick={() => {
+                              if (!pressed) playUiSound("tab");
+                              setTableDisplayMode(vm.id);
+                            }}
+                          >
+                            {pressed ? (
+                              <motion.span
+                                layoutId="alerts-vm-pill"
+                                className="segmented__pill"
+                                transition={PILL_SPRING}
+                              />
+                            ) : null}
+                            <span className="segmented__text">{vm.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <span className="toolbar__count mono" aria-live="polite">
                       {fmtNumber(filteredAlerts.length)} kejadian ditampilkan
@@ -2588,35 +2661,10 @@ export function GempaRoneApp({
                     );
                     const zones: RoneTsunamiZone[] =
                       zoneBulletin?.warning_zones || zoneBulletin?.zones || [];
-                    const mediaBulletin =
-                      zoneBulletin ||
-                      ev.bulletins.find((b) => b.media?.warning_zones) ||
-                      ev.bulletins[0];
-                    const mediaEventId =
-                      mediaBulletin?.event_id || ev.bulletins[0]?.event_id || ev.id;
-                    const rawMedia = mediaBulletin?.media || {};
-                    const mediaSource = {
-                      warning_zones:
-                        rawMedia.warning_zones ||
-                        (mediaEventId
-                          ? `/api/v1/media/${mediaEventId}/tsunami-zones`
-                          : null),
-                      travel_time:
-                        rawMedia.travel_time ||
-                        (mediaEventId
-                          ? `/api/v1/media/${mediaEventId}/tsunami-travel-time`
-                          : null),
-                      sea_height:
-                        rawMedia.sea_height ||
-                        (mediaEventId
-                          ? `/api/v1/media/${mediaEventId}/tsunami-sea-height`
-                          : null),
-                      shakemap:
-                        rawMedia.shakemap ||
-                        (mediaEventId
-                          ? `/api/v1/media/${mediaEventId}/shakemap`
-                          : null),
-                    };
+                    const mediaSource =
+                      ev.bulletins.find((b) => b.media?.warning_zones)?.media ||
+                      ev.bulletins[0]?.media ||
+                      {};
 
                     const counts: Record<string, number> = {
                       AWAS: 0,
@@ -2948,7 +2996,6 @@ export function GempaRoneApp({
 
                 <section className="card map-banner-card" aria-label="Peta gempa merusak">
                   <RoneLeafletMap
-                    key="damage-map"
                     id="damage-map"
                     className="map map--banner"
                     ariaLabel="Peta gempa merusak"
@@ -3032,16 +3079,29 @@ export function GempaRoneApp({
                           { id: "cards", label: "Kartu Ringkas" },
                           { id: "table", label: "Tabel Penuh" },
                         ] as const
-                      ).map((vm) => (
-                        <button
-                          key={vm.id}
-                          type="button"
-                          aria-pressed={tableDisplayMode === vm.id ? "true" : "false"}
-                          onClick={() => setTableDisplayMode(vm.id)}
-                        >
-                          {vm.label}
-                        </button>
-                      ))}
+                      ).map((vm) => {
+                        const pressed = tableDisplayMode === vm.id;
+                        return (
+                          <button
+                            key={vm.id}
+                            type="button"
+                            aria-pressed={pressed ? "true" : "false"}
+                            onClick={() => {
+                              if (!pressed) playUiSound("tab");
+                              setTableDisplayMode(vm.id);
+                            }}
+                          >
+                            {pressed ? (
+                              <motion.span
+                                layoutId="dmg-vm-pill"
+                                className="segmented__pill"
+                                transition={PILL_SPRING}
+                              />
+                            ) : null}
+                            <span className="segmented__text">{vm.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                     <span className="toolbar__count mono" aria-live="polite">
                       {fmtNumber(filteredDamaging.length)} kejadian
@@ -3262,7 +3322,7 @@ export function GempaRoneApp({
                   scrollWheelZoom
                   isDark={isDark}
                   extraLayers={{
-                    archive3m: mapLayersOn.archive3m ? archive3m : undefined,
+                    archive3m: mapLayersOn.archive3m ? liveArchive3m : undefined,
                     archive5y: mapLayersOn.archive5y ? archive5y : undefined,
                     faultsIndonesia: mapLayersOn.faultsIndonesia ? faultsIndonesia : null,
                     faultsGlobal: mapLayersOn.faultsGlobal ? faultsGlobal : null,
@@ -3304,7 +3364,7 @@ export function GempaRoneApp({
                         </label>
                         <label className="check">
                           <span>3 bulan (M 4,5+)</span>
-                          <span className="count">{fmtNumber(archive3m.length)}</span>
+                          <span className="count">{fmtNumber(liveArchive3m.length)}</span>
                           <input
                             type="checkbox"
                             checked={mapLayersOn.archive3m}
@@ -3452,8 +3512,8 @@ export function GempaRoneApp({
 
             {/* ==================== 8. TENTANG (/about/) ==================== */}
             {activeTab === "about" && (
-              <div className="split split--list info-layout">
-                <article className="card prose info-prose-card">
+              <div className="split split--list">
+                <article className="card prose">
                   <h2>Sumber Data</h2>
                   <p>
                     Semua data berasal dari <strong>BMKG</strong> (Badan Meteorologi,
@@ -3463,7 +3523,7 @@ export function GempaRoneApp({
                   </p>
 
                   <h2>Jenis Kanal Data</h2>
-                  <ul className="info-channel-list">
+                  <ul>
                     <li>
                       <strong>Realtime</strong> — deteksi otomatis jaringan seismik, muncul
                       beberapa menit setelah gempa. Waktu asli dalam UTC dikonversi ke WIB.
@@ -3490,119 +3550,93 @@ export function GempaRoneApp({
                     patahan gempa. Setiap kenaikan 1,0 satuan Magnitudo berarti pelepasan
                     energi sekitar 32 kali lebih besar:
                   </p>
-                  <div className="info-table-wrap">
-                    <table className="table info-scale-table">
-                      <thead>
-                        <tr>
-                          <th scope="col">Indikator</th>
-                          <th scope="col">Kategori &amp; Rentang</th>
-                          <th scope="col">Karakteristik Energi &amp; Dampak</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={2.5} size="sm" labelOverride="Mikro" />
-                          </td>
-                          <td className="mono info-scale-table__range">Mikro · M &lt; 3,0</td>
-                          <td className="info-scale-table__desc">
-                            Terekam instrumen seismograf lokal; umumnya tidak terasa manusia.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={3.4} size="sm" labelOverride="Ringan" />
-                          </td>
-                          <td className="mono info-scale-table__range">Ringan · M 3,0–3,9</td>
-                          <td className="info-scale-table__desc">
-                            Terasa ringan di dekat episenter apabila kedalaman sangat dangkal.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={4.5} size="sm" labelOverride="Sedang" />
-                          </td>
-                          <td className="mono info-scale-table__range">Sedang · M 4,0–4,9</td>
-                          <td className="info-scale-table__desc">
-                            Getaran dirasakan cukup luas di dalam ruangan; jarang memicu kerusakan.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={5.4} size="sm" labelOverride="Kuat" />
-                          </td>
-                          <td className="mono info-scale-table__range">Kuat · M 5,0–5,9</td>
-                          <td className="info-scale-table__desc">
-                            Dapat menyebabkan kerusakan ringan–sedang pada konstruksi lemah.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={6.5} size="sm" labelOverride="Besar" />
-                          </td>
-                          <td className="mono info-scale-table__range">Besar · M 6,0–6,9</td>
-                          <td className="info-scale-table__desc">
-                            Energi besar; berpotensi merusak di kawasan berpenduduk dekat episenter.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="info-scale-table__badge">
-                            <MagBadge magnitude={7.5} size="sm" labelOverride="Dahsyat" />
-                          </td>
-                          <td className="mono info-scale-table__range">Dahsyat · M ≥ 7,0</td>
-                          <td className="info-scale-table__desc">
-                            Kerusakan struktural luas; hiposenter dangkal di laut dapat memicu tsunami.
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="table table--structured scale-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Indikator</th>
+                        <th scope="col">Kategori &amp; Rentang</th>
+                        <th scope="col">Karakteristik Energi &amp; Dampak</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={2.5} size="sm" labelOverride="Mikro" />
+                        </td>
+                        <td className="mono">Mikro · M &lt; 3,0</td>
+                        <td>Terekam instrumen seismograf lokal; umumnya tidak terasa manusia.</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={3.4} size="sm" labelOverride="Ringan" />
+                        </td>
+                        <td className="mono">Ringan · M 3,0–3,9</td>
+                        <td>Terasa ringan di dekat episenter apabila kedalaman sangat dangkal.</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={4.5} size="sm" labelOverride="Sedang" />
+                        </td>
+                        <td className="mono">Sedang · M 4,0–4,9</td>
+                        <td>Getaran dirasakan cukup luas di dalam ruangan; jarang memicu kerusakan.</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={5.4} size="sm" labelOverride="Kuat" />
+                        </td>
+                        <td className="mono">Kuat · M 5,0–5,9</td>
+                        <td>Dapat menyebabkan kerusakan ringan–sedang pada konstruksi lemah.</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={6.5} size="sm" labelOverride="Besar" />
+                        </td>
+                        <td className="mono">Besar · M 6,0–6,9</td>
+                        <td>Energi besar; berpotensi merusak di kawasan berpenduduk dekat episenter.</td>
+                      </tr>
+                      <tr>
+                        <td>
+                          <MagBadge magnitude={7.5} size="sm" labelOverride="Dahsyat" />
+                        </td>
+                        <td className="mono">Dahsyat · M ≥ 7,0</td>
+                        <td>Kerusakan struktural luas; hiposenter dangkal di laut dapat memicu tsunami.</td>
+                      </tr>
+                    </tbody>
+                  </table>
 
                   <h2>Intensitas Guncangan (MMI)</h2>
                   <p>
                     Skala Modified Mercalli Intensity (angka Romawi) menggambarkan guncangan
                     di lokasi pengamat:
                   </p>
-                  <div className="info-table-wrap">
-                    <table className="table info-mmi-table">
-                      <tbody>
-                        <tr>
-                          <td className="mono info-mmi-table__code">I–II MMI</td>
-                          <td className="info-mmi-table__desc">
-                            Dirasakan sedikit orang dalam keadaan tenang, benda gantung bergoyang.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="mono info-mmi-table__code">III–IV MMI</td>
-                          <td className="info-mmi-table__desc">
-                            Terasa nyata di dalam rumah seperti truk berat melintas.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="mono info-mmi-table__code">V–VI MMI</td>
-                          <td className="info-mmi-table__desc">
-                            Dirasakan hampir semua warga; barang ringan jatuh, plester dinding retak.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="mono info-mmi-table__code">VII–VIII MMI</td>
-                          <td className="info-mmi-table__desc">
-                            Kerusakan ringan hingga sedang pada bangunan standar.
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="mono info-mmi-table__code">IX+ MMI</td>
-                          <td className="info-mmi-table__desc">
-                            Kerusakan struktural berat.
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+                  <table className="table table--structured mmi-table">
+                    <tbody>
+                      <tr>
+                        <td className="mono">I–II MMI</td>
+                        <td>Dirasakan sedikit orang dalam keadaan tenang, benda gantung bergoyang.</td>
+                      </tr>
+                      <tr>
+                        <td className="mono">III–IV MMI</td>
+                        <td>Terasa nyata di dalam rumah seperti truk berat melintas.</td>
+                      </tr>
+                      <tr>
+                        <td className="mono">V–VI MMI</td>
+                        <td>Dirasakan hampir semua warga; barang ringan jatuh, plester dinding retak.</td>
+                      </tr>
+                      <tr>
+                        <td className="mono">VII–VIII MMI</td>
+                        <td>Kerusakan ringan hingga sedang pada bangunan standar.</td>
+                      </tr>
+                      <tr>
+                        <td className="mono">IX+ MMI</td>
+                        <td>Kerusakan struktural berat.</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </article>
 
-                <aside className="split__sticky info-aside">
-                  <section className="card card--obsidian info-api-card" aria-labelledby="api-heading">
+                <aside className="split__sticky">
+                  <section className="card card--obsidian" aria-labelledby="api-heading">
                     <p className="hero__kicker">API JSON Terbuka</p>
                     <h2
                       className="mt-2"
@@ -3637,7 +3671,7 @@ export function GempaRoneApp({
                         </div>
                       ))}
                     </div>
-                    <div className="row mt-5 info-actions">
+                    <div className="row mt-5">
                       <button
                         type="button"
                         className="btn"
@@ -3667,8 +3701,8 @@ export function GempaRoneApp({
 
             {/* ==================== 9. /DOCS INTERACTIVE OPENAPI EXPLORER ==================== */}
             {activeTab === "docs" && (
-              <div className="split split--list info-layout">
-                <section className="card info-prose-card">
+              <div className="split split--list">
+                <section className="card">
                   <div className="card__head">
                     <h2>Daftar Endpoint OpenAPI (v2.0.0)</h2>
                     <button
@@ -3715,11 +3749,14 @@ export function GempaRoneApp({
 
                 <aside className="split__sticky">
                   <section className="card card--obsidian">
-                    <div className="card__head">
+                    <div className="card__head" style={{ flexWrap: "wrap" }}>
                       <h2 style={{ color: "#FFFFFF" }}>Respons JSON Langsung</h2>
                       <span
                         className="mono xsmall"
-                        style={{ color: "rgba(255,255,255,0.68)" }}
+                        style={{
+                          color: "rgba(255,255,255,0.68)",
+                          wordBreak: "break-all",
+                        }}
                       >
                         {apiPlayPath}
                       </span>
@@ -3742,6 +3779,8 @@ export function GempaRoneApp({
                 </aside>
               </div>
             )}
+              </motion.div>
+            </AnimatePresence>
           </main>
 
           {activeTab !== "map" && (
@@ -3777,139 +3816,33 @@ export function GempaRoneApp({
           )}
         </div>
 
-        {/* Compact Mobile Bottom Navigation Bar (4 Primary Items + 1 Dropup Menu) */}
-        {mobileDropupOpen ? (
-          <div
-            className="mobile-dropup-backdrop"
-            aria-hidden="true"
-            onClick={() => setMobileDropupOpen(false)}
-          />
-        ) : null}
-
-        <div
-          className={`mobile-dropup-sheet${mobileDropupOpen ? " is-open" : ""}`}
-          role="dialog"
-          aria-label="Menu navigasi lainnya"
-          aria-hidden={mobileDropupOpen ? "false" : "true"}
-        >
-          <div className="mobile-dropup-sheet__head">
-            <strong>Menu Lainnya</strong>
-            <button
-              type="button"
-              className="mobile-dropup-sheet__close"
-              aria-label="Tutup menu lainnya"
-              onClick={() => setMobileDropupOpen(false)}
-            >
-              <RoneIcon name="close" />
-            </button>
-          </div>
-
-          <div className="mobile-dropup-grid">
-            {MOBILE_DROPUP_ITEMS.map((item) => {
-              const isActive = activeTab === item.key;
-              return (
-                <button
-                  key={`drop-${item.key}`}
-                  type="button"
-                  className={`mobile-dropup-item${isActive ? " is-active" : ""}`}
-                  aria-current={isActive ? "page" : undefined}
-                  onClick={() => navigateTab(item.key)}
-                >
-                  <span className="mobile-dropup-item__icon">
-                    <RoneIcon name={item.icon} />
-                  </span>
-                  <span className="mobile-dropup-item__text">
-                    <strong>{item.label}</strong>
-                    <small>{item.desc}</small>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mobile-dropup-pod">
-            <span className="mobile-dropup-pod__label">
-              <RoneIcon name="pin" /> Kota Referensi Jarak:
-            </span>
-            <div className="mobile-dropup-pod__controls">
-              <select
-                aria-label="Pilih kota referensi jarak"
-                value={userPoint.isGps ? "gps" : userPoint.id}
-                onChange={(e) => {
-                  const found = INDONESIA_REFERENCE_CITIES.find(
-                    (c) => c.id === e.target.value
-                  );
-                  if (found) handleSelectCity(found);
-                }}
-              >
-                {userPoint.isGps ? (
-                  <option value="gps">GPS ({userPoint.label})</option>
-                ) : null}
-                {INDONESIA_REFERENCE_CITIES.map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="mobile-dropup-pod__gps"
-                onClick={handleRequestGps}
-                disabled={gpsLoading}
-              >
-                {gpsLoading ? "…" : "GPS"}
-              </button>
-            </div>
-          </div>
-        </div>
-
+        {/* Thumb-Friendly Mobile Bottom Navigation Bar (Visible on Phones < 680px) */}
         <nav className="mobile-bottom-nav" aria-label="Navigasi cepat perangkat seluler">
-          {MOBILE_PRIMARY_NAV.map((item) => {
-            const isActive = activeTab === item.key && !mobileDropupOpen;
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeTab === item.key;
             return (
-              <button
+              <motion.button
                 key={`mob-${item.key}`}
                 type="button"
                 className={`mobile-bottom-nav__btn${isActive ? " is-active" : ""}`}
-                aria-current={activeTab === item.key ? "page" : undefined}
+                aria-current={isActive ? "page" : undefined}
+                whileTap={{ scale: 0.94 }}
                 onClick={() => navigateTab(item.key)}
               >
-                <RoneIcon name={item.icon} />
-                <span>{item.shortLabel}</span>
-              </button>
+                {isActive ? (
+                  <motion.span
+                    layoutId="mobile-nav-active-pill"
+                    className="mobile-bottom-nav__pill"
+                    transition={PILL_SPRING}
+                  />
+                ) : null}
+                <span className="mobile-bottom-nav__content">
+                  <RoneIcon name={item.icon} />
+                  <span>{item.shortLabel}</span>
+                </span>
+              </motion.button>
             );
           })}
-
-          {(() => {
-            const activeSecondary = MOBILE_DROPUP_ITEMS.find(
-              (item) => item.key === activeTab
-            );
-            const isMoreActive = Boolean(activeSecondary) || mobileDropupOpen;
-            return (
-              <button
-                type="button"
-                className={`mobile-bottom-nav__btn mobile-bottom-nav__btn--more${
-                  isMoreActive ? " is-active" : ""
-                }`}
-                aria-expanded={mobileDropupOpen ? "true" : "false"}
-                aria-haspopup="dialog"
-                onClick={() => setMobileDropupOpen((prev) => !prev)}
-              >
-                <RoneIcon
-                  name={
-                    mobileDropupOpen
-                      ? "close"
-                      : activeSecondary
-                        ? activeSecondary.icon
-                        : "layers"
-                  }
-                />
-                <span>
-                  {activeSecondary ? `${activeSecondary.shortLabel} ▴` : "Lainnya ▴"}
-                </span>
-              </button>
-            );
-          })()}
         </nav>
       </div>
 
@@ -3929,14 +3862,46 @@ export function GempaRoneApp({
 
       <RoneLightbox state={lightboxState} onClose={() => setLightboxState(null)} />
 
-      <div
-        className="toast"
-        role="status"
-        aria-live="polite"
-        data-show={toastMsg ? "true" : "false"}
-      >
-        {toastMsg}
-      </div>
+      {/* Floating Bottom-Center Obsidian Toast Pill (Taimo Motion UI) */}
+      <AnimatePresence>
+        {toastState ? (
+          <motion.div
+            key={toastState.id}
+            className="toast-pill"
+            role="status"
+            aria-live="polite"
+            initial={{ opacity: 0, y: 24, scale: 0.94, filter: "blur(4px)" }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: 14, scale: 0.96, filter: "blur(4px)" }}
+            transition={TOAST_SPRING}
+          >
+            <span className="toast-pill__dot" aria-hidden="true" />
+            <span className="toast-pill__msg">{toastState.msg}</span>
+            {toastState.actionLabel && toastState.onAction ? (
+              <button
+                type="button"
+                className="toast-pill__action"
+                onClick={() => {
+                  playUiSound("click");
+                  toastState.onAction?.();
+                  setToastState(null);
+                }}
+              >
+                {toastState.actionLabel}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="toast-pill__dismiss"
+                aria-label="Tutup notifikasi"
+                onClick={() => setToastState(null)}
+              >
+                <RoneIcon name="close" />
+              </button>
+            )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

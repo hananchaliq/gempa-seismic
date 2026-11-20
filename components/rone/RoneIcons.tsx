@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   fmtDateTime,
   fmtDepth,
@@ -10,8 +10,34 @@ import {
   magCategory,
 } from "@/lib/rone/format";
 
-function useAnimatedMagnitude(target: number): string {
-  return fmtMag(target);
+function useAnimatedMagnitude(target: number, durationMs = 520): string {
+  const [val, setVal] = useState<number>(target);
+
+  useEffect(() => {
+    if (!Number.isFinite(target)) return;
+    let rafId = 0;
+    const startTime = performance.now();
+    const startVal = Math.max(0, target * 0.25);
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / durationMs);
+      // Cubic ease-out
+      const eased = 1 - Math.pow(1 - t, 3);
+      const current = startVal + (target - startVal) * eased;
+      setVal(current);
+      if (t < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        setVal(target);
+      }
+    };
+
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, durationMs]);
+
+  return fmtMag(val);
 }
 
 export const ICON_PATHS: Record<string, string> = {
@@ -93,7 +119,7 @@ export function MagBadge({
   const bucket = magBucket(magnitude);
   const category = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const animatedNum = useAnimatedMagnitude(magnitude);
+  const animatedNum = useAnimatedMagnitude(magnitude, 480);
   // 270-degree track is 75% of 100 pathLength; scale magnitude [1.5..8.8] across [10..74]
   const arcFill = Number(
     Math.max(10, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
@@ -113,9 +139,10 @@ export function MagBadge({
         } as React.CSSProperties
       }
       title={`Magnitudo M ${fmtMag(magnitude)} (${category})`}
+      aria-label={`Magnitudo M ${fmtMag(magnitude)} — ${category}`}
     >
-      <span className="mag-gauge__ring">
-        <svg viewBox="0 0 100 100" className="mag-gauge__svg" aria-hidden="true">
+      <span className="mag-gauge__ring" aria-hidden="true">
+        <svg viewBox="0 0 100 100" className="mag-gauge__svg">
           {/* Recessed dark 270° groove track */}
           <circle
             className="mag-gauge__track"
@@ -135,7 +162,6 @@ export function MagBadge({
           />
         </svg>
         <span className="mag-gauge__well">
-          <span className="visually-hidden">M </span>
           <span className="mag-gauge__num">{animatedNum}</span>
         </span>
       </span>
@@ -160,7 +186,7 @@ export function MagDial({
   const bucket = magBucket(magnitude);
   const strengthLabel = magCategory(magnitude);
   const isHigh = magnitude >= 5.0;
-  const animatedNum = useAnimatedMagnitude(magnitude);
+  const animatedNum = useAnimatedMagnitude(magnitude, 580);
   const fill = Number(
     Math.max(11, Math.min(74, ((magnitude - 0.8) / 8.0) * 74)).toFixed(1)
   );
@@ -203,7 +229,7 @@ export function MagDial({
 
 export function MagLegend() {
   return (
-    <div className="legend" role="region" aria-label="Legenda kekuatan magnitudo">
+    <div className="legend" aria-label="Legenda kekuatan magnitudo">
       <span>Skala Kekuatan Magnitudo</span>
       <span className="legend__item">
         <span className="legend__swatch" style={{ "--c": "var(--m-0)" } as React.CSSProperties} />

@@ -108,9 +108,6 @@ export function RoneLeafletMap({
   useEffect(() => {
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
-    let settleTimer1: ReturnType<typeof setTimeout> | null = null;
-    let settleTimer2: ReturnType<typeof setTimeout> | null = null;
-    let docClickHandler: ((e: MouseEvent) => void) | null = null;
 
     async function init() {
       const L = (await import("leaflet")).default;
@@ -125,21 +122,19 @@ export function RoneLeafletMap({
           : INDONESIA.center;
       const initialZoom =
         centerOnLatest && latestEvent
-          ? Math.round(latestZoom)
+          ? latestZoom
           : narrow
             ? INDONESIA.zoom - 1
             : INDONESIA.zoom;
 
-      // IMPORTANT: Use integer zoomSnap: 1 so fitBounds and zoom controls never land on
-      // fractional zoom levels (e.g. 4.5), which would cause 404s on XYZ tile servers.
       const map = L.map(el, {
         center: initialCenter,
         zoom: initialZoom,
         minZoom: 2,
         maxZoom: 16,
         worldCopyJump: true,
-        zoomSnap: 1,
-        zoomDelta: 1,
+        zoomSnap: 0.5,
+        zoomDelta: 0.5,
         preferCanvas: true,
         scrollWheelZoom,
         zoomControl: false,
@@ -150,67 +145,18 @@ export function RoneLeafletMap({
       labelsPane.style.zIndex = "350";
       labelsPane.style.pointerEvents = "none";
 
-      const createCanvasTileLayer = (
-        urlTemplate: string,
-        opts: LType.GridLayerOptions & { maxZoom?: number } = {}
-      ) => {
-        let currentUrl = urlTemplate;
-        const CanvasTileLayer = L.GridLayer.extend({
-          createTile(coords: LType.Coords, done: LType.DoneCallback) {
-            const tile = document.createElement("canvas");
-            tile.width = 256;
-            tile.height = 256;
-            tile.className = "leaflet-tile";
-            const ctx = tile.getContext("2d");
-            const img = new Image();
-            img.referrerPolicy = "no-referrer";
-            img.decoding = "async";
-            img.onload = () => {
-              if (ctx) {
-                ctx.drawImage(img, 0, 0, 256, 256);
-              }
-              done(undefined, tile);
-            };
-            img.onerror = (err) => {
-              done(err instanceof Error ? err : new Error("Tile error"), tile);
-            };
-            const intZ = Math.max(0, Math.round(coords.z));
-            img.src = L.Util.template(currentUrl, {
-              r: "",
-              s: "a",
-              x: Math.round(coords.x),
-              y: Math.round(coords.y),
-              z: intZ,
-            });
-            return tile;
-          },
-          setUrl(newUrl: string) {
-            if (currentUrl === newUrl) {
-              return this;
-            }
-            currentUrl = newUrl;
-            this.redraw();
-            return this;
-          },
-        });
-        return new (CanvasTileLayer as unknown as new (
-          o?: LType.GridLayerOptions
-        ) => LType.TileLayer)({
-          ...opts,
-          updateWhenIdle: false,
-          updateWhenZooming: false,
-          keepBuffer: 2,
-        });
-      };
-
       const darkNow = document.documentElement.dataset.theme === "dark";
-      const canvasBase = createCanvasTileLayer(canvasUrl(darkNow, "Base"), {
+      const canvasBase = L.tileLayer(canvasUrl(darkNow, "Base"), {
         attribution: ESRI,
         maxZoom: 16,
+        updateWhenIdle: true,
+        keepBuffer: 2,
       });
-      const canvasLabels = createCanvasTileLayer(canvasUrl(darkNow, "Reference"), {
+      const canvasLabels = L.tileLayer(canvasUrl(darkNow, "Reference"), {
         maxZoom: 16,
         pane: "labels",
+        updateWhenIdle: true,
+        keepBuffer: 2,
       });
       canvasBaseRef.current = canvasBase;
       canvasLabelsRef.current = canvasLabels;
@@ -220,25 +166,30 @@ export function RoneLeafletMap({
           key: "neutral",
           label: "Netral",
           layer: L.layerGroup([canvasBase, canvasLabels]),
-          swatch: `<svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="border-radius:8px;flex-shrink:0"><rect width="36" height="36" rx="8" fill="#1f232a"/><path d="M5 24 Q14 16 22 20 T32 12" fill="none" stroke="#64748b" stroke-width="2"/><circle cx="18" cy="18" r="3.5" fill="#f97316"/></svg>`,
+          thumb: () =>
+            `${ESRI_ROOT}/Canvas/World_${
+              document.documentElement.dataset.theme === "dark" ? "Dark" : "Light"
+            }_Gray_Base/MapServer/tile/4/8/13`,
         },
         {
           key: "streets",
           label: "Jalan",
-          layer: createCanvasTileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
             attribution: OSM,
             maxZoom: 19,
+            updateWhenIdle: true,
           }),
-          swatch: `<svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="border-radius:8px;flex-shrink:0"><rect width="36" height="36" rx="8" fill="#e2e8f0"/><path d="M0 14 L36 22 M14 0 L22 36" stroke="#94a3b8" stroke-width="2.5"/><path d="M4 28 L32 8" stroke="#f59e0b" stroke-width="2"/></svg>`,
+          thumb: () => "https://tile.openstreetmap.org/4/13/8.png",
         },
         {
           key: "satellite",
           label: "Satelit",
-          layer: createCanvasTileLayer(`${ESRI_ROOT}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
+          layer: L.tileLayer(`${ESRI_ROOT}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
             attribution: "Tiles &copy; Esri",
             maxZoom: 18,
+            updateWhenIdle: true,
           }),
-          swatch: `<svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" style="border-radius:8px;flex-shrink:0"><rect width="36" height="36" rx="8" fill="#0c2d3a"/><path d="M6 22 Q16 12 28 18 T34 26 L36 36 L0 36 Z" fill="#14532d"/><circle cx="24" cy="12" r="3" fill="#38bdf8" fill-opacity="0.6"/></svg>`,
+          thumb: () => `${ESRI_ROOT}/World_Imagery/MapServer/tile/4/8/13`,
         },
       ];
 
@@ -254,7 +205,7 @@ export function RoneLeafletMap({
         })
         .addTo(map);
 
-      // Custom BasemapControl
+      // Custom BasemapControl identical to ridwaanhall/gempa
       const BasemapControl = L.Control.extend({
         onAdd() {
           let current = base[0];
@@ -288,7 +239,7 @@ export function RoneLeafletMap({
             opt.setAttribute("role", "menuitemradio");
             opt.dataset.base = item.key;
             opt.setAttribute("aria-checked", String(item === current));
-            opt.innerHTML = `${item.swatch}<span>${item.label}</span>${iconHTML("check", "icon basemap__check")}`;
+            opt.innerHTML = `<img src="${item.thumb()}" alt="" loading="lazy" width="44" height="44" referrerpolicy="no-referrer" onerror="this.style.display='none'" /><span>${item.label}</span>${iconHTML("check", "icon basemap__check")}`;
             opt.addEventListener("click", () => {
               if (item !== current) {
                 map.removeLayer(current.layer);
@@ -310,10 +261,9 @@ export function RoneLeafletMap({
             e.stopPropagation();
             setOpen(wrap.dataset.open !== "true");
           });
-          docClickHandler = (e: MouseEvent) => {
+          document.addEventListener("click", (e) => {
             if (!wrap.contains(e.target as Node)) setOpen(false);
-          };
-          document.addEventListener("click", docClickHandler);
+          });
           L.DomEvent.disableClickPropagation(wrap);
           L.DomEvent.disableScrollPropagation(wrap);
           return wrap;
@@ -329,42 +279,28 @@ export function RoneLeafletMap({
       quakesGroupRef.current = quakesGroup;
       mapRef.current = map;
 
-      const applyArchipelagoFit = () => {
-        if (!mapRef.current) return;
-        mapRef.current.invalidateSize({ pan: false });
-        if (fitArchipelago) {
-          mapRef.current.fitBounds(INDONESIA_BOUNDS, {
-            animate: false,
-            maxZoom: 5,
-          });
-        }
-      };
-
-      applyArchipelagoFit();
-
-      // Ensure tiles and bounds are synced after tab transition / initial layout
-      settleTimer1 = setTimeout(applyArchipelagoFit, 80);
-      settleTimer2 = setTimeout(() => {
-        if (!mapRef.current) return;
-        mapRef.current.invalidateSize({ pan: false });
-      }, 280);
+      if (fitArchipelago) {
+        map.fitBounds(INDONESIA_BOUNDS, { animate: false });
+      }
 
       resizeObserver = new ResizeObserver(() => {
-        if (mapRef.current) {
-          mapRef.current.invalidateSize({ pan: false });
-        }
+        map.invalidateSize();
       });
       resizeObserver.observe(el);
       setMapReady(true);
     }
 
-    init();
+    let timerId = 0;
+    const rafId = window.requestAnimationFrame(() => {
+      timerId = window.setTimeout(() => {
+        init();
+      }, 40);
+    });
 
     return () => {
       cancelled = true;
-      if (settleTimer1) clearTimeout(settleTimer1);
-      if (settleTimer2) clearTimeout(settleTimer2);
-      if (docClickHandler) document.removeEventListener("click", docClickHandler);
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timerId);
       resizeObserver?.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
@@ -378,6 +314,15 @@ export function RoneLeafletMap({
     if (!mapReady || !canvasBaseRef.current || !canvasLabelsRef.current) return;
     canvasBaseRef.current.setUrl(canvasUrl(isDark, "Base"));
     canvasLabelsRef.current.setUrl(canvasUrl(isDark, "Reference"));
+    if (containerRef.current) {
+      const img = containerRef.current.querySelector('[data-base="neutral"] img');
+      if (img) {
+        img.setAttribute(
+          "src",
+          `${ESRI_ROOT}/Canvas/World_${isDark ? "Dark" : "Light"}_Gray_Base/MapServer/tile/4/8/13`
+        );
+      }
+    }
   }, [isDark, mapReady]);
 
   // Render extra layers (for Peta /map/ page)
@@ -494,20 +439,15 @@ export function RoneLeafletMap({
 
     if (latestEvent && (!selectedEvent || selectedEvent.event_id !== latestEvent.event_id)) {
       const color = magColorHex(latestEvent.magnitude, isDark);
-      const accessibleLabel = `Episenter gempa terbaru M ${fmtMag(latestEvent.magnitude)} ${
-        latestEvent.region || latestEvent.province || ""
-      }`.trim();
       const divIcon = L.divIcon({
         className: "epicenter",
-        html: `<div style="--c: ${color}; width: 80px; height: 80px; position: relative;"><span class="visually-hidden">${accessibleLabel}</span><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__core"></span></div>`,
+        html: `<div style="--c: ${color}; width: 80px; height: 80px; position: relative;"><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__core"></span></div>`,
         iconSize: [80, 80],
         iconAnchor: [40, 40],
       });
 
       const marker = L.marker([latestEvent.latitude, latestEvent.longitude], {
         icon: divIcon,
-        title: accessibleLabel,
-        alt: accessibleLabel,
         zIndexOffset: 1000,
       }).bindTooltip(`Terbaru · M${fmtMag(latestEvent.magnitude)}`, {
         permanent: true,
@@ -522,18 +462,12 @@ export function RoneLeafletMap({
       });
 
       marker.addTo(map);
-      const markerEl = marker.getElement();
-      if (markerEl) {
-        markerEl.setAttribute("aria-label", accessibleLabel);
-      }
       latestMarkerRef.current = marker;
 
       if (centerOnLatest && hasCenteredRef.current !== latestEvent.event_id) {
-        map.setView(
-          [latestEvent.latitude, latestEvent.longitude],
-          Math.round(latestZoom),
-          { animate: false }
-        );
+        map.setView([latestEvent.latitude, latestEvent.longitude], latestZoom, {
+          animate: false,
+        });
         hasCenteredRef.current = latestEvent.event_id;
       }
     }
@@ -589,7 +523,7 @@ export function RoneLeafletMap({
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     map.flyTo(
       [selectedEvent.latitude, selectedEvent.longitude],
-      Math.max(Math.round(map.getZoom()), 6),
+      Math.max(map.getZoom(), 6),
       { duration: reduce ? 0 : 0.6 }
     );
   }, [selectedEvent, latestEvent, isDark, mapReady]);

@@ -114,14 +114,10 @@ export interface RoneStation {
 export interface RoneHistoryRecord {
   timestamp: string;
   minutes_after_origin: number | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  magnitude: number | null;
+  magnitude: number;
   magnitude_type: string | null;
-  magnitude_count?: number | null;
-  depth_km: number | null;
+  depth_km: number;
   phase_count: number | null;
-  status?: string | null;
 }
 
 const tzDateTime = new Intl.DateTimeFormat("id-ID", {
@@ -428,12 +424,15 @@ function weekStart(t: number): number {
 }
 
 export function weeklyBuckets<T extends { origin_time: string; magnitude: number; region?: string }>(
-  events: T[]
+  events: T[],
+  nowMs?: number
 ): WeeklyBucket<T>[] {
   if (!events.length) return [];
-  const times = events.map((e) => new Date(e.origin_time).getTime());
+  const times = events.map((e) => new Date(e.origin_time).getTime()).filter(Number.isFinite);
+  if (!times.length) return [];
   const minT = Math.min(...times);
-  const maxT = Math.max(...times);
+  const maxEventT = Math.max(...times);
+  const maxT = nowMs && Number.isFinite(nowMs) ? Math.max(maxEventT, nowMs) : maxEventT;
   const first = weekStart(minT);
   const last = weekStart(maxT);
   const weeks: WeeklyBucket<T>[] = [];
@@ -448,8 +447,10 @@ export function weeklyBuckets<T extends { origin_time: string; magnitude: number
       partial,
     });
   }
-  events.forEach((e, i) => {
-    const w = weeks[Math.round((weekStart(times[i]) - first) / (7 * DAY))];
+  events.forEach((e) => {
+    const t = new Date(e.origin_time).getTime();
+    if (!Number.isFinite(t)) return;
+    const w = weeks[Math.round((weekStart(t) - first) / (7 * DAY))];
     if (!w) return;
     w.count += 1;
     if (!w.max || e.magnitude > w.max.magnitude) w.max = e;

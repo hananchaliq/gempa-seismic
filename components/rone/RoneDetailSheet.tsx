@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { ImageOff, RefreshCw } from "lucide-react";
 import {
   distanceKm,
   fmtCoords,
@@ -18,9 +20,11 @@ import {
   RoneRealtimeEvent,
 } from "@/lib/rone/format";
 import {
-  fetchDirectBmkgHistory,
-  fetchDirectBmkgNarrative,
-} from "@/lib/rone/bmkgLiveDirect";
+  PILL_SPRING,
+  playUiSound,
+  SHEET_SPRING,
+  TAIMO_EASE,
+} from "@/lib/rone/motionSystem";
 import { FactsList, MagBadge, MagDial, RoneIcon } from "./RoneIcons";
 
 export type DetailTarget =
@@ -32,196 +36,80 @@ export interface MediaItem {
   label: string;
   caption: string;
   src: string;
-  fallbackSrc?: string;
-}
-
-const BMKG_GCS_BASE = "https://bmkg-content-inatews.storage.googleapis.com";
-
-export function resolveMediaPair(
-  src?: string | null
-): { src: string; fallbackSrc?: string } | null {
-  if (!src || typeof src !== "string") return null;
-  const trimmed = src.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("data:")) {
-    return { src: trimmed };
-  }
-  const mediaMatch = trimmed.match(/\/api\/v1\/media\/([^/?#]+)\/([^/?#]+)/);
-  if (mediaMatch) {
-    const eventId = mediaMatch[1];
-    const kind = mediaMatch[2].toLowerCase();
-    const proxyUrl = `/api/v1/media/${eventId}/${kind}`;
-    if (/^\d{14}$/.test(eventId)) {
-      if (kind === "shakemap") {
-        return { src: `${BMKG_GCS_BASE}/${eventId}.mmi.jpg`, fallbackSrc: proxyUrl };
-      }
-      if (kind === "tsunami-zones" || kind === "warning_zones" || kind === "wzmap") {
-        return { src: `${BMKG_GCS_BASE}/${eventId}.wz.png`, fallbackSrc: proxyUrl };
-      }
-      if (
-        kind === "tsunami-travel-time" ||
-        kind === "travel_time" ||
-        kind === "ttmap"
-      ) {
-        return { src: `${BMKG_GCS_BASE}/${eventId}.tt.png`, fallbackSrc: proxyUrl };
-      }
-      if (
-        kind === "tsunami-sea-height" ||
-        kind === "sea_height" ||
-        kind === "sshmap"
-      ) {
-        return { src: `${BMKG_GCS_BASE}/${eventId}.ssh.png`, fallbackSrc: proxyUrl };
-      }
-      if (kind === "location-map" || kind === "location_map") {
-        return {
-          src: `${BMKG_GCS_BASE}/${eventId}_rev/loc_map.png`,
-          fallbackSrc: proxyUrl,
-        };
-      }
-      if (kind === "station-intensity" || kind === "station_intensity") {
-        return {
-          src: `${BMKG_GCS_BASE}/${eventId}_rev/stationlist_MMI.jpg`,
-          fallbackSrc: proxyUrl,
-        };
-      }
-      if (kind === "impact") {
-        return {
-          src: `${BMKG_GCS_BASE}/${eventId}_rev/impact_list.jpg`,
-          fallbackSrc: proxyUrl,
-        };
-      }
-      if (kind === "intensity") {
-        return {
-          src: `${BMKG_GCS_BASE}/${eventId}_rev/intensity_logo.jpg`,
-          fallbackSrc: proxyUrl,
-        };
-      }
-    }
-    return { src: proxyUrl };
-  }
-  const bmkgShakemapMatch = trimmed.match(/\/(\d{14})\.mmi\.jpg$/i);
-  if (bmkgShakemapMatch) {
-    const eventId = bmkgShakemapMatch[1];
-    return {
-      src: `${BMKG_GCS_BASE}/${eventId}.mmi.jpg`,
-      fallbackSrc: `/api/v1/media/${eventId}/shakemap`,
-    };
-  }
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return { src: trimmed };
-  }
-  if (trimmed.startsWith("/api/")) {
-    return { src: trimmed };
-  }
-  if (trimmed.startsWith("/")) {
-    return { src: `https://gempa.rone.dev${trimmed}` };
-  }
-  return { src: `https://gempa.rone.dev/${trimmed}` };
 }
 
 export function resolveMediaUrl(src?: string | null): string | null {
-  return resolveMediaPair(src)?.src || null;
+  if (!src || typeof src !== "string") return null;
+  const trimmed = src.trim();
+  if (!trimmed) return null;
+  // Route gempa.rone.dev media paths through our resilient multi-mirror /api/v1/media proxy
+  const roneMediaMatch = trimmed.match(
+    /^https?:\/\/gempa\.rone\.dev(\/api\/v1\/media\/.+)$/i
+  );
+  if (roneMediaMatch) {
+    return roneMediaMatch[1];
+  }
+  if (trimmed.startsWith("/api/v1/media/")) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/media/")) {
+    return `/api/v1${trimmed}`;
+  }
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:")
+  ) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return `https://gempa.rone.dev${trimmed}`;
+  }
+  return `https://gempa.rone.dev/${trimmed}`;
 }
 
 function SeismicMediaFallback({
   label,
   caption,
   compact = false,
-  fullStage = false,
+  onRetry,
 }: {
   label: string;
   caption?: string;
   compact?: boolean;
-  fullStage?: boolean;
+  onRetry?: () => void;
 }) {
   if (compact) {
     return (
       <span className="viewer__tab-fallback" aria-hidden="true">
-        <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
-          <rect width="36" height="36" rx="8" fill="#0B2B26" />
-          <circle cx="18" cy="18" r="12" stroke="#8EB69B" strokeOpacity="0.28" strokeDasharray="2 2" />
-          <circle cx="18" cy="18" r="7" stroke="#E87A3E" strokeOpacity="0.55" />
-          <circle cx="18" cy="18" r="2.8" fill="#E87A3E" />
-        </svg>
+        <ImageOff size={15} strokeWidth={2} />
       </span>
     );
   }
 
   return (
-    <div
-      className={`viewer__fallback${fullStage ? " viewer__fallback--lightbox" : ""}`}
-      role="img"
-      aria-label={caption || label}
-    >
-      <svg
-        viewBox="0 0 640 360"
-        className="viewer__fallback-svg"
-        preserveAspectRatio="xMidYMid meet"
-        aria-hidden="true"
-      >
-        <defs>
-          <radialGradient id="seismicGlow" cx="50%" cy="50%" r="55%">
-            <stop offset="0%" stopColor="#E87A3E" stopOpacity="0.28" />
-            <stop offset="45%" stopColor="#235347" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#051F20" stopOpacity="0.95" />
-          </radialGradient>
-          <pattern id="seismicGrid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <path
-              d="M 32 0 L 0 0 0 32"
-              fill="none"
-              stroke="#8EB69B"
-              strokeWidth="0.6"
-              strokeOpacity="0.14"
-            />
-          </pattern>
-        </defs>
-        <rect width="640" height="360" fill="#051F20" />
-        <rect width="640" height="360" fill="url(#seismicGrid)" />
-        <rect width="640" height="360" fill="url(#seismicGlow)" />
-        {/* Stylized Archipelago & Isoseismal Contours */}
-        <path
-          d="M90 190 Q 155 215, 220 225 T 355 232 T 490 205 T 570 175"
-          fill="none"
-          stroke="#8EB69B"
-          strokeWidth="1.5"
-          strokeOpacity="0.35"
-          strokeDasharray="6 4"
-        />
-        <circle
-          cx="320"
-          cy="170"
-          r="125"
-          fill="none"
-          stroke="#8EB69B"
-          strokeWidth="1"
-          strokeOpacity="0.25"
-          strokeDasharray="4 4"
-        />
-        <circle
-          cx="320"
-          cy="170"
-          r="86"
-          fill="none"
-          stroke="#E8B84B"
-          strokeWidth="1.2"
-          strokeOpacity="0.4"
-        />
-        <circle
-          cx="320"
-          cy="170"
-          r="48"
-          fill="rgba(232, 122, 62, 0.12)"
-          stroke="#E87A3E"
-          strokeWidth="1.6"
-          strokeOpacity="0.75"
-        />
-        <circle cx="320" cy="170" r="8" fill="#E87A3E" />
-        <circle cx="320" cy="170" r="16" fill="none" stroke="#DAF1DE" strokeWidth="1.2" opacity="0.6" />
-      </svg>
+    <div className="viewer__fallback" role="img" aria-label={caption || label}>
       <div className="viewer__fallback-content">
-        <span className="viewer__fallback-badge">Visualisasi Telemetri BMKG</span>
-        <strong>{label}</strong>
-        {caption ? <span>{caption}</span> : null}
+        <span className="viewer__fallback-icon" aria-hidden="true">
+          <ImageOff size={20} strokeWidth={1.9} />
+        </span>
+        <span className="viewer__fallback-badge">Citra BMKG Belum Tersedia</span>
+        <strong className="viewer__fallback-title">{label}</strong>
+        {caption ? <span className="viewer__fallback-sub">{caption}</span> : null}
+        {onRetry ? (
+          <button
+            type="button"
+            className="viewer__fallback-retry"
+            onClick={(e) => {
+              e.stopPropagation();
+              playUiSound("click");
+              onRetry();
+            }}
+          >
+            <RefreshCw size={13} strokeWidth={2.2} />
+            <span>Muat Ulang</span>
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -236,227 +124,271 @@ export function MediaViewerSection({
   title?: string;
   onOpenLightbox: (validItems: MediaItem[], index: number) => void;
 }) {
-  const valid: MediaItem[] = items
-    .map((i): MediaItem | null => {
-      const resolved = resolveMediaPair(i.src);
-      return resolved
-        ? {
-            label: i.label,
-            caption: i.caption,
-            src: resolved.src,
-            fallbackSrc: resolved.fallbackSrc,
-          }
-        : null;
-    })
-    .filter((i): i is MediaItem => i !== null);
+  const valid: MediaItem[] = useMemo(
+    () =>
+      items
+        .map((i) => {
+          const resolved = resolveMediaUrl(i.src);
+          return resolved ? { label: i.label, caption: i.caption, src: resolved } : null;
+        })
+        .filter((i): i is MediaItem => Boolean(i)),
+    [items]
+  );
 
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [fallbackUsedMap, setFallbackUsedMap] = useState<Record<string, boolean>>({});
-  const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
+  const itemsSignature = useMemo(() => valid.map((v) => v.src).join("|"), [valid]);
+  const [selectedBySig, setSelectedBySig] = useState<Record<string, string>>({});
   const [dragOffsetX, setDragOffsetX] = useState(0);
-  const gestureStartRef = React.useRef<{ x: number; y: number } | null>(null);
-  const didSwipeRef = React.useRef(false);
+  const [failedBySig, setFailedBySig] = useState<Record<string, Record<string, boolean>>>({});
+  const [retryBySig, setRetryBySig] = useState<Record<string, number>>({});
+  const swipeRef = React.useRef<{
+    startX: number;
+    startY: number;
+    swiped: boolean;
+    active: boolean;
+  } | null>(null);
 
-  const safeIdx = valid.length ? Math.min(activeIdx, valid.length - 1) : 0;
-  const current = valid[safeIdx];
+  const failedMap = useMemo(
+    () => failedBySig[itemsSignature] || {},
+    [failedBySig, itemsSignature]
+  );
+  const retryNonce = retryBySig[itemsSignature] || 0;
 
-  if (!valid.length || !current) return null;
+  // Filter out any of the 5 images that BMKG did not publish (404 / broken) whenever at least 1 valid image exists
+  const availableItems = useMemo(() => {
+    const working = valid.filter((item) => !failedMap[item.src]);
+    return working.length > 0 ? working : valid;
+  }, [valid, failedMap]);
+
+  const unavailableCount = useMemo(
+    () => valid.filter((item) => failedMap[item.src]).length,
+    [valid, failedMap]
+  );
+
+  const allFailed = valid.length > 0 && unavailableCount === valid.length;
+
+  if (!valid.length) return null;
+
+  const preferredSrc = selectedBySig[itemsSignature] || valid[0]?.src || "";
+  const effectiveIdx = availableItems.findIndex((item) => item.src === preferredSrc);
+  const safeIdx = effectiveIdx >= 0 ? effectiveIdx : 0;
+  const current = availableItems[safeIdx] || availableItems[0];
   const isCurrentFailed = Boolean(failedMap[current.src]);
-  const activeCurrentSrc =
-    fallbackUsedMap[current.src] && current.fallbackSrc
-      ? current.fallbackSrc
-      : current.src;
-  const multi = valid.length > 1;
+  const multi = availableItems.length > 1;
 
-  const startSwipe = (x: number, y: number) => {
-    didSwipeRef.current = false;
-    gestureStartRef.current = { x, y };
+  const setActiveSrc = (src: string) => {
+    setSelectedBySig((prev) => ({ ...prev, [itemsSignature]: src }));
   };
 
-  const moveSwipe = (x: number, y: number) => {
-    if (!multi || !gestureStartRef.current) return;
-    const dx = x - gestureStartRef.current.x;
-    const dy = y - gestureStartRef.current.y;
-    if (Math.abs(dx) > Math.abs(dy)) {
-      setDragOffsetX(dx * 0.28);
-    }
+  const withNonce = (url: string) => {
+    if (!retryNonce) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}r=${retryNonce}`;
   };
 
-  const endSwipe = (x: number, y: number) => {
-    if (!gestureStartRef.current) return;
-    const dx = x - gestureStartRef.current.x;
-    const dy = y - gestureStartRef.current.y;
-    gestureStartRef.current = null;
+  const markFailed = (src: string) => {
+    setFailedBySig((prev) => {
+      const currentMap = prev[itemsSignature] || {};
+      if (currentMap[src]) return prev;
+      return {
+        ...prev,
+        [itemsSignature]: { ...currentMap, [src]: true },
+      };
+    });
+  };
+
+  const handleRetryAll = () => {
+    setFailedBySig((prev) => ({ ...prev, [itemsSignature]: {} }));
+    setRetryBySig((prev) => ({
+      ...prev,
+      [itemsSignature]: (prev[itemsSignature] || 0) + 1,
+    }));
+    setActiveSrc(valid[0]?.src || "");
+  };
+
+  const goPrev = () => {
+    playUiSound("slide");
     setDragOffsetX(0);
-
-    if (multi && Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-      didSwipeRef.current = true;
-      if (dx < 0) {
-        setActiveIdx((prev) => (prev + 1) % valid.length);
-      } else {
-        setActiveIdx((prev) => (prev - 1 + valid.length) % valid.length);
-      }
-    }
+    const nextIdx = (safeIdx - 1 + availableItems.length) % availableItems.length;
+    setActiveSrc(availableItems[nextIdx].src);
+  };
+  const goNext = () => {
+    playUiSound("slide");
+    setDragOffsetX(0);
+    const nextIdx = (safeIdx + 1) % availableItems.length;
+    setActiveSrc(availableItems[nextIdx].src);
   };
 
   return (
     <section className="viewer-section">
-      <div className="viewer-section__head">
-        <h3>{title}</h3>
-        {multi ? (
-          <span className="viewer-section__counter mono">
-            {safeIdx + 1} / {valid.length}
-          </span>
-        ) : null}
-      </div>
+      <h3>{title}</h3>
       <div className="viewer">
-        <button
+        <div
           className="viewer__stage"
-          type="button"
-          onTouchStart={(e) => {
-            if (e.touches.length === 1) {
-              startSwipe(e.touches[0].clientX, e.touches[0].clientY);
-            }
-          }}
-          onTouchMove={(e) => {
-            if (e.touches.length === 1) {
-              moveSwipe(e.touches[0].clientX, e.touches[0].clientY);
-            }
-          }}
-          onTouchEnd={(e) => {
-            if (e.changedTouches.length > 0) {
-              endSwipe(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-            }
-          }}
-          onPointerDown={(e) => {
-            if (e.pointerType === "mouse") {
-              startSwipe(e.clientX, e.clientY);
-            }
-          }}
-          onPointerMove={(e) => {
-            if (e.pointerType === "mouse" && gestureStartRef.current) {
-              moveSwipe(e.clientX, e.clientY);
-            }
-          }}
-          onPointerUp={(e) => {
-            if (e.pointerType === "mouse") {
-              endSwipe(e.clientX, e.clientY);
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              if (!allFailed) onOpenLightbox(availableItems, safeIdx);
             }
           }}
           onClick={() => {
-            if (didSwipeRef.current) {
-              didSwipeRef.current = false;
+            if (swipeRef.current?.swiped) {
+              swipeRef.current.swiped = false;
               return;
             }
-            onOpenLightbox(valid, safeIdx);
+            if (allFailed) return;
+            playUiSound("pop");
+            onOpenLightbox(availableItems, safeIdx);
+          }}
+          onTouchStart={(e) => {
+            if (!multi || e.touches.length !== 1) return;
+            swipeRef.current = {
+              startX: e.touches[0].clientX,
+              startY: e.touches[0].clientY,
+              swiped: false,
+              active: true,
+            };
+          }}
+          onTouchMove={(e) => {
+            if (!multi || !swipeRef.current?.active || e.touches.length !== 1) return;
+            const dx = e.touches[0].clientX - swipeRef.current.startX;
+            const dy = e.touches[0].clientY - swipeRef.current.startY;
+            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+              setDragOffsetX(Math.max(-90, Math.min(90, dx * 0.45)));
+            }
+          }}
+          onTouchEnd={(e) => {
+            if (!multi || !swipeRef.current?.active) return;
+            const endX = e.changedTouches[0]?.clientX ?? swipeRef.current.startX;
+            const endY = e.changedTouches[0]?.clientY ?? swipeRef.current.startY;
+            const dx = endX - swipeRef.current.startX;
+            const dy = endY - swipeRef.current.startY;
+            swipeRef.current.active = false;
+            setDragOffsetX(0);
+            if (Math.abs(dx) >= 38 && Math.abs(dx) > Math.abs(dy)) {
+              swipeRef.current.swiped = true;
+              if (dx < 0) goNext();
+              else goPrev();
+            }
+          }}
+          onPointerDown={(e) => {
+            if (!multi || e.pointerType === "touch") return;
+            swipeRef.current = {
+              startX: e.clientX,
+              startY: e.clientY,
+              swiped: false,
+              active: true,
+            };
+          }}
+          onPointerMove={(e) => {
+            if (!multi || e.pointerType === "touch" || !swipeRef.current?.active) return;
+            const dx = e.clientX - swipeRef.current.startX;
+            const dy = e.clientY - swipeRef.current.startY;
+            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+              setDragOffsetX(Math.max(-90, Math.min(90, dx * 0.45)));
+            }
+          }}
+          onPointerUp={(e) => {
+            if (!multi || e.pointerType === "touch" || !swipeRef.current?.active) return;
+            const dx = e.clientX - swipeRef.current.startX;
+            const dy = e.clientY - swipeRef.current.startY;
+            swipeRef.current.active = false;
+            setDragOffsetX(0);
+            if (Math.abs(dx) >= 44 && Math.abs(dx) > Math.abs(dy)) {
+              swipeRef.current.swiped = true;
+              if (dx < 0) goNext();
+              else goPrev();
+            }
           }}
           aria-label={`Perbesar ${current.label}`}
         >
-          <div
-            className="viewer__slide-inner"
-            style={{
-              transform: dragOffsetX ? `translate3d(${dragOffsetX}px, 0, 0)` : undefined,
-              transition: dragOffsetX ? "none" : "transform 0.22s ease",
-              width: "100%",
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
+          <AnimatePresence mode="wait">
             {isCurrentFailed ? (
-              <SeismicMediaFallback label={current.label} caption={current.caption} />
+              <motion.div
+                key={`fallback-${current.src}-${retryNonce}`}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.22, ease: TAIMO_EASE }}
+                className="viewer__stage-motion"
+              >
+                <SeismicMediaFallback
+                  label={current.label}
+                  caption={current.caption}
+                  onRetry={handleRetryAll}
+                />
+              </motion.div>
             ) : (
-              <img
-                key={activeCurrentSrc}
-                src={activeCurrentSrc}
+              <motion.img
+                key={`img-${current.src}-${retryNonce}`}
+                src={withNonce(current.src)}
                 alt={current.caption || current.label}
-                decoding="async"
                 draggable={false}
-                referrerPolicy="no-referrer"
-                onError={() => {
-                  if (current.fallbackSrc && !fallbackUsedMap[current.src]) {
-                    setFallbackUsedMap((prev) => ({
-                      ...prev,
-                      [current.src]: true,
-                    }));
-                  } else {
-                    setFailedMap((prev) => ({
-                      ...prev,
-                      [current.src]: true,
-                    }));
-                  }
+                initial={{ opacity: 0.35, filter: "blur(4px)" }}
+                animate={{
+                  opacity: 1,
+                  filter: "blur(0px)",
+                  x: dragOffsetX,
                 }}
+                exit={{ opacity: 0.35 }}
+                transition={{ duration: 0.24, ease: TAIMO_EASE }}
+                referrerPolicy="no-referrer"
+                onError={() => markFailed(current.src)}
               />
             )}
-          </div>
-          <span className="viewer__hint">
-            <RoneIcon name="expand" />
-            <span>{multi ? "Geser foto · Ketuk perbesar" : "Perbesar"}</span>
-          </span>
-        </button>
-
-        <div className="viewer__meta-row">
-          <p className="viewer__meta">{current.caption}</p>
-          {multi ? (
-            <div className="viewer__dots" role="tablist" aria-label={`Pilih ${title}`}>
-              {valid.map((item, idx) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  role="tab"
-                  aria-selected={idx === safeIdx ? "true" : "false"}
-                  aria-label={`Tampilkan ${item.label}`}
-                  className={`viewer__dot${idx === safeIdx ? " is-active" : ""}`}
-                  onClick={() => setActiveIdx(idx)}
-                />
-              ))}
-            </div>
+          </AnimatePresence>
+          {!isCurrentFailed ? (
+            <span className="viewer__hint">
+              <RoneIcon name="expand" />
+              Perbesar
+            </span>
           ) : null}
         </div>
 
-        {multi ? (
+        <p className="viewer__meta">
+          {current.caption}
+          {multi ? ` · (${safeIdx + 1}/${availableItems.length} · Geser foto)` : ""}
+          {!allFailed && unavailableCount > 0
+            ? ` · ${unavailableCount} citra belum diterbitkan BMKG`
+            : ""}
+        </p>
+
+        {availableItems.length > 1 && !allFailed ? (
           <div className="viewer__tabs" role="tablist" aria-label={title}>
-            {valid.map((item, idx) => {
-              const isTabFailed = Boolean(failedMap[item.src]);
-              const tabSrc =
-                fallbackUsedMap[item.src] && item.fallbackSrc
-                  ? item.fallbackSrc
-                  : item.src;
+            {availableItems.map((item, idx) => {
+              const isSelected = idx === safeIdx;
               return (
-                <button
-                  key={item.label}
+                <motion.button
+                  key={item.src}
                   className="viewer__tab"
                   type="button"
                   role="tab"
-                  aria-selected={idx === safeIdx ? "true" : "false"}
-                  onClick={() => setActiveIdx(idx)}
+                  aria-selected={isSelected ? "true" : "false"}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    playUiSound("tab");
+                    setActiveSrc(item.src);
+                  }}
                 >
-                  {isTabFailed ? (
-                    <SeismicMediaFallback label={item.label} compact />
-                  ) : (
-                    <img
-                      src={tabSrc}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      draggable={false}
-                      referrerPolicy="no-referrer"
-                      onError={() => {
-                        if (item.fallbackSrc && !fallbackUsedMap[item.src]) {
-                          setFallbackUsedMap((prev) => ({
-                            ...prev,
-                            [item.src]: true,
-                          }));
-                        } else {
-                          setFailedMap((prev) => ({
-                            ...prev,
-                            [item.src]: true,
-                          }));
-                        }
-                      }}
+                  {isSelected ? (
+                    <motion.span
+                      layoutId={`viewer-tab-pill-${itemsSignature}`}
+                      className="viewer__tab-pill"
+                      transition={PILL_SPRING}
                     />
-                  )}
-                  <span>{item.label}</span>
-                </button>
+                  ) : null}
+                  <img
+                    src={withNonce(item.src)}
+                    alt=""
+                    loading="eager"
+                    width={34}
+                    height={34}
+                    referrerPolicy="no-referrer"
+                    onError={() => markFailed(item.src)}
+                  />
+                  <span className="viewer__tab-label">{item.label}</span>
+                </motion.button>
               );
             })}
           </div>
@@ -483,54 +415,71 @@ export function RoneDetailSheet({
   onShare: (eventId: string) => void;
   onOpenLightbox: (items: MediaItem[], index: number) => void;
 }) {
-  const [narrativeHtml, setNarrativeHtml] = useState<string | null>(null);
-  const [historyRecords, setHistoryRecords] = useState<RoneHistoryRecord[] | null>(null);
-  const [loadingExtra, setLoadingExtra] = useState(false);
+  const [extraByEvent, setExtraByEvent] = useState<{
+    eventId: string;
+    narrativeHtml: string | null;
+    historyRecords: RoneHistoryRecord[] | null;
+    done: boolean;
+  } | null>(null);
+
+  const activeEventId = target?.data.event_id ?? null;
+  const narrativeHtml =
+    extraByEvent?.eventId === activeEventId ? extraByEvent.narrativeHtml : null;
+  const historyRecords =
+    extraByEvent?.eventId === activeEventId ? extraByEvent.historyRecords : null;
+  const needsExtra =
+    (target?.kind === "felt" && Boolean(target.data.has_narrative)) ||
+    target?.kind === "realtime";
+  const loadingExtra = Boolean(
+    needsExtra && (!extraByEvent || extraByEvent.eventId !== activeEventId || !extraByEvent.done)
+  );
 
   useEffect(() => {
     if (!target) return;
     let cancelled = false;
-    const currentId = target.data.event_id;
-    setNarrativeHtml(null);
-    setHistoryRecords(null);
+    const eventId = target.data.event_id;
 
     if (target.kind === "felt" && target.data.has_narrative) {
-      setLoadingExtra(true);
-      Promise.all([
-        fetch(`/api/v1/earthquakes/${encodeURIComponent(currentId)}/narrative`)
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        fetchDirectBmkgNarrative(currentId).catch(() => null),
-      ])
-        .then(([apiRes, directHtml]) => {
+      fetch(`/api/v1/earthquakes/${eventId}/narrative`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
           if (cancelled) return;
-          const html =
-            directHtml || (apiRes?.event_id === currentId ? apiRes?.html : null);
-          if (html) setNarrativeHtml(html);
+          setExtraByEvent({
+            eventId,
+            narrativeHtml: d?.html || null,
+            historyRecords: null,
+            done: true,
+          });
         })
-        .finally(() => {
-          if (!cancelled) setLoadingExtra(false);
+        .catch(() => {
+          if (cancelled) return;
+          setExtraByEvent({
+            eventId,
+            narrativeHtml: null,
+            historyRecords: null,
+            done: true,
+          });
         });
     } else if (target.kind === "realtime") {
-      setLoadingExtra(true);
-      Promise.all([
-        fetch(`/api/v1/earthquakes/realtime/${encodeURIComponent(currentId)}/history`)
-          .then((r) => (r.ok ? r.json() : null))
-          .catch(() => null),
-        fetchDirectBmkgHistory(currentId).catch(() => null),
-      ])
-        .then(([apiRes, directRecords]) => {
+      fetch(`/api/v1/earthquakes/realtime/${eventId}/history`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
           if (cancelled) return;
-          if (directRecords && directRecords.length > 0) {
-            setHistoryRecords(directRecords);
-          } else if (apiRes?.event_id === currentId && Array.isArray(apiRes?.records)) {
-            setHistoryRecords(apiRes.records);
-          } else {
-            setHistoryRecords([]);
-          }
+          setExtraByEvent({
+            eventId,
+            narrativeHtml: null,
+            historyRecords: Array.isArray(d?.records) ? d.records : [],
+            done: true,
+          });
         })
-        .finally(() => {
-          if (!cancelled) setLoadingExtra(false);
+        .catch(() => {
+          if (cancelled) return;
+          setExtraByEvent({
+            eventId,
+            narrativeHtml: null,
+            historyRecords: [],
+            done: true,
+          });
         });
     }
 
@@ -548,67 +497,82 @@ export function RoneDetailSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [target, onClose]);
 
-  if (!target) return null;
-
-  const ev = target.data;
-  const originMs = new Date(ev.origin_time).getTime();
-  const nearby =
-    target.kind === "damaging"
-      ? []
-      : realtimePool
-          .map((item) => ({ item, km: distanceKm(ev, item) }))
-          .filter(({ item, km }) => {
-            if (km > 150 || item.event_id === ev.event_id) return false;
-            const sameShock =
-              Math.abs(new Date(item.origin_time).getTime() - originMs) < 120_000 && km < 30;
-            return !sameShock;
-          })
-          .slice(0, 6);
-
-  const oldestRealtime = realtimePool.at(-1);
-
-  let title = "";
-  let sub = "";
-  if (target.kind === "felt") {
-    title = target.data.region;
-    sub = [
-      fmtDateTime(target.data.origin_time),
-      " · ",
-      fmtRelative(target.data.origin_time, nowMs),
-      target.data.tsunami_potential ? " · Berpotensi tsunami" : "",
-    ].join("");
-  } else if (target.kind === "realtime") {
-    title = target.data.region;
-    sub = `${fmtDateTime(target.data.origin_time)} · ${fmtRelative(target.data.origin_time, nowMs)}`;
-  } else {
-    title = target.data.epicenter
-      ? target.data.epicenter.replace(/^di /, "Di ")
-      : target.data.province;
-    sub = `${target.data.province} · ${new Date(target.data.origin_time).getUTCFullYear()}`;
-  }
-
   return (
-    <div
-      className="sheet-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="sheet"
-        id="detail"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="detail-title"
-      >
-        <div className="sheet__head">
-          <span id="detail-badge">
-            <MagDial magnitude={ev.magnitude} size="compact" />
-          </span>
-          <div className="sheet__heading">
-            <h2 className="sheet__title" id="detail-title" tabIndex={-1}>
-              {title}
-            </h2>
+    <AnimatePresence>
+      {target ? (() => {
+        const ev = target.data;
+        const originMs = new Date(ev.origin_time).getTime();
+        const nearby =
+          target.kind === "damaging"
+            ? []
+            : realtimePool
+                .map((item) => ({ item, km: distanceKm(ev, item) }))
+                .filter(({ item, km }) => {
+                  if (km > 150 || item.event_id === ev.event_id) return false;
+                  const sameShock =
+                    Math.abs(new Date(item.origin_time).getTime() - originMs) < 120_000 &&
+                    km < 30;
+                  return !sameShock;
+                })
+                .slice(0, 6);
+
+        const oldestRealtime = realtimePool.at(-1);
+
+        let title = "";
+        let sub = "";
+        if (target.kind === "felt") {
+          title = target.data.region;
+          sub = [
+            fmtDateTime(target.data.origin_time),
+            " · ",
+            fmtRelative(target.data.origin_time, nowMs),
+            target.data.tsunami_potential ? " · Berpotensi tsunami" : "",
+          ].join("");
+        } else if (target.kind === "realtime") {
+          title = target.data.region;
+          sub = `${fmtDateTime(target.data.origin_time)} · ${fmtRelative(
+            target.data.origin_time,
+            nowMs
+          )}`;
+        } else {
+          title = target.data.epicenter
+            ? target.data.epicenter.replace(/^di /, "Di ")
+            : target.data.province;
+          sub = `${target.data.province} · ${new Date(target.data.origin_time).getUTCFullYear()}`;
+        }
+
+        return (
+          <motion.div
+            key="detail-sheet-backdrop"
+            className="sheet-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose();
+            }}
+          >
+            <motion.div
+              key={`sheet-${ev.event_id}`}
+              className="sheet"
+              id="detail"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="detail-title"
+              initial={{ x: "100%", opacity: 0.7 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: "100%", opacity: 0.6 }}
+              transition={SHEET_SPRING}
+            >
+              <div className="sheet__head">
+                <span id="detail-badge">
+                  <MagDial magnitude={ev.magnitude} size="compact" />
+                </span>
+                <div className="sheet__heading">
+                  <h2 className="sheet__title" id="detail-title" tabIndex={-1}>
+                    {title}
+                  </h2>
             <p className="sheet__sub" id="detail-sub">
               {sub}
             </p>
@@ -727,9 +691,6 @@ export function RoneDetailSheet({
                       <span className="pill pill--ok">
                         {target.data.status === "confirmed" ? "Terkonfirmasi" : target.data.status}
                       </span>
-                      {target.data.phase_count != null ? (
-                        <span className="pill">{fmtNumber(target.data.phase_count)} fase</span>
-                      ) : null}
                       {target.data.has_focal_mechanism ? (
                         <span className="pill">Mekanisme fokal</span>
                       ) : null}
@@ -885,8 +846,11 @@ export function RoneDetailSheet({
             </p>
           ) : null}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+        );
+      })() : null}
+    </AnimatePresence>
   );
 }
 
@@ -897,294 +861,239 @@ export function RoneLightbox({
   state: { items: MediaItem[]; index: number } | null;
   onClose: () => void;
 }) {
-  const [idx, setIdx] = useState(0);
+  const [idxState, setIdxState] = useState<{ stateRef: typeof state; idx: number }>({
+    stateRef: state,
+    idx: state?.index ?? 0,
+  });
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffsetX, setDragOffsetX] = useState(0);
   const [failedMap, setFailedMap] = useState<Record<string, boolean>>({});
-  const gestureRef = React.useRef<{
-    startX: number;
-    startY: number;
-    basePanX: number;
-    basePanY: number;
-    moved: boolean;
-  } | null>(null);
+  const swipeRef = React.useRef<{ startX: number; startY: number; active: boolean } | null>(
+    null
+  );
+
+  const idx = idxState.stateRef === state ? idxState.idx : (state?.index ?? 0);
+  const setIdx = (updater: number | ((prev: number) => number)) => {
+    setIdxState((prev) => {
+      const base = prev.stateRef === state ? prev.idx : (state?.index ?? 0);
+      const next = typeof updater === "function" ? updater(base) : updater;
+      return { stateRef: state, idx: next };
+    });
+  };
 
   useEffect(() => {
-    if (state) {
-      setIdx(state.index);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-    }
-  }, [state]);
-
-  useEffect(() => {
-    if (!state) return;
+    if (!state || !state.items.length) return;
+    const len = state.items.length;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
-      } else if (e.key === "ArrowRight" && state.items.length > 1) {
+      } else if (e.key === "ArrowLeft" && len > 1) {
         setZoom(1);
-        setPan({ x: 0, y: 0 });
-        setIdx((i) => (i + 1) % state.items.length);
-      } else if (e.key === "ArrowLeft" && state.items.length > 1) {
+        setDragOffsetX(0);
+        setIdx((i) => (i - 1 + len) % len);
+      } else if (e.key === "ArrowRight" && len > 1) {
         setZoom(1);
-        setPan({ x: 0, y: 0 });
-        setIdx((i) => (i - 1 + state.items.length) % state.items.length);
+        setDragOffsetX(0);
+        setIdx((i) => (i + 1) % len);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [state, onClose]);
 
-  const current = state?.items?.[idx] || state?.items?.[0] || null;
-  const [fallbackUsedMap, setFallbackUsedMap] = useState<Record<string, boolean>>({});
-
-  if (!state || !state.items.length || !current) return null;
-  const multi = state.items.length > 1;
-  const isCurrentFailed = Boolean(failedMap[current.src]);
-  const activeLightboxSrc =
-    fallbackUsedMap[current.src] && current.fallbackSrc
-      ? current.fallbackSrc
-      : current.src;
-
-  const resetZoomAndPan = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
   const goPrev = () => {
-    resetZoomAndPan();
+    if (!state?.items.length) return;
+    playUiSound("slide");
+    setZoom(1);
+    setDragOffsetX(0);
     setIdx((i) => (i - 1 + state.items.length) % state.items.length);
   };
-
   const goNext = () => {
-    resetZoomAndPan();
+    if (!state?.items.length) return;
+    playUiSound("slide");
+    setZoom(1);
+    setDragOffsetX(0);
     setIdx((i) => (i + 1) % state.items.length);
   };
 
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest("button")) return;
-    gestureRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      basePanX: pan.x,
-      basePanY: pan.y,
-      moved: false,
-    };
-    setIsDragging(true);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!gestureRef.current) return;
-    const dx = e.clientX - gestureRef.current.startX;
-    const dy = e.clientY - gestureRef.current.startY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
-      gestureRef.current.moved = true;
-    }
-    if (zoom > 1) {
-      const maxOffset = (zoom - 1) * 320;
-      setPan({
-        x: Math.max(-maxOffset, Math.min(maxOffset, gestureRef.current.basePanX + dx)),
-        y: Math.max(-maxOffset, Math.min(maxOffset, gestureRef.current.basePanY + dy)),
-      });
-    } else if (multi) {
-      setPan({ x: dx * 0.35, y: 0 });
-    }
-  };
-
-  const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!gestureRef.current) return;
-    const dx = e.clientX - gestureRef.current.startX;
-    const dy = e.clientY - gestureRef.current.startY;
-    gestureRef.current = null;
-    setIsDragging(false);
-
-    if (zoom <= 1) {
-      if (multi && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.15) {
-        if (dx < 0) {
-          goNext();
-        } else {
-          goPrev();
-        }
-      } else {
-        setPan({ x: 0, y: 0 });
-      }
-    }
-  };
-
   return (
-    <div
-      className="lightbox-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="lb-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="lightbox__bar">
-        <div className="lightbox__heading">
-          <h2 className="lightbox__title" id="lb-title">
-            {current.label}
-          </h2>
-          {multi ? (
-            <span className="lightbox__count mono">
-              {idx + 1} / {state.items.length}
-            </span>
-          ) : null}
-        </div>
-        <div className="lightbox__tools">
-          <button
-            className="icon-btn lightbox__tool-btn"
-            type="button"
-            aria-label="Perkecil"
-            disabled={zoom <= 1}
-            onClick={() => {
-              setZoom((z) => {
-                const next = Math.max(1, Number((z - 0.5).toFixed(1)));
-                if (next <= 1) setPan({ x: 0, y: 0 });
-                return next;
-              });
+    <AnimatePresence>
+      {state && state.items.length > 0 ? (() => {
+        const current = state.items[idx] || state.items[0];
+        const multi = state.items.length > 1;
+        const isCurrentFailed = Boolean(failedMap[current.src]);
+
+        return (
+          <motion.div
+            key="lightbox-backdrop"
+            className="lightbox-backdrop"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lb-title"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: TAIMO_EASE }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose();
             }}
           >
-            <RoneIcon name="zoom-out" />
-          </button>
-          <button
-            className="lightbox__tool-btn"
-            type="button"
-            aria-label="Reset ukuran"
-            onClick={resetZoomAndPan}
-            title="Tampilkan penuh (100%)"
-          >
-            <span className="mono" style={{ fontSize: "0.7rem", fontWeight: 800 }}>
-              {Math.round(zoom * 100)}%
-            </span>
-          </button>
-          <button
-            className="icon-btn lightbox__tool-btn"
-            type="button"
-            aria-label="Perbesar"
-            disabled={zoom >= 3}
-            onClick={() => setZoom((z) => Math.min(3, Number((z + 0.5).toFixed(1))))}
-          >
-            <RoneIcon name="zoom-in" />
-          </button>
-          <button
-            className="icon-btn lightbox__tool-btn lightbox__tool-btn--close"
-            type="button"
-            aria-label="Tutup"
-            onClick={onClose}
-          >
-            <RoneIcon name="close" />
-          </button>
-        </div>
-      </div>
+            <div className="lightbox__bar">
+              <div className="lightbox__heading">
+                <h2 className="lightbox__title" id="lb-title">
+                  {current.label}
+                </h2>
+                {multi ? (
+                  <span className="lightbox__count mono">
+                    {idx + 1} / {state.items.length}
+                  </span>
+                ) : null}
+              </div>
+              <div className="lightbox__tools">
+                <button
+                  className="icon-btn"
+                  type="button"
+                  aria-label="Perkecil"
+                  disabled={zoom <= 1}
+                  onClick={() => {
+                    playUiSound("click");
+                    setZoom((z) => Math.max(1, Number((z - 0.5).toFixed(1))));
+                  }}
+                >
+                  <RoneIcon name="zoom-out" />
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
+                  aria-label="Perbesar"
+                  disabled={zoom >= 3}
+                  onClick={() => {
+                    playUiSound("click");
+                    setZoom((z) => Math.min(3, Number((z + 0.5).toFixed(1))));
+                  }}
+                >
+                  <RoneIcon name="zoom-in" />
+                </button>
+                <button
+                  className="icon-btn"
+                  type="button"
+                  aria-label="Tutup"
+                  onClick={onClose}
+                >
+                  <RoneIcon name="close" />
+                </button>
+              </div>
+            </div>
 
-      <div
-        className="lightbox__stage"
-        style={{
-          touchAction: "none",
-          cursor: zoom > 1 ? (isDragging ? "grabbing" : "grab") : multi ? "ew-resize" : "zoom-in",
-        }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onDoubleClick={() => {
-          if (zoom > 1) {
-            resetZoomAndPan();
-          } else {
-            setZoom(2);
-          }
-        }}
-      >
-        <div
-          className="lightbox__media-frame"
-          style={{
-            transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
-            transition: isDragging ? "none" : "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        >
-          {isCurrentFailed ? (
-            <SeismicMediaFallback
-              label={current.label}
-              caption={current.caption}
-              fullStage
-            />
-          ) : (
-            <img
-              key={activeLightboxSrc}
-              src={activeLightboxSrc}
-              alt={current.caption || current.label}
-              draggable={false}
-              referrerPolicy="no-referrer"
-              onError={() => {
-                if (current.fallbackSrc && !fallbackUsedMap[current.src]) {
-                  setFallbackUsedMap((prev) => ({
-                    ...prev,
-                    [current.src]: true,
-                  }));
-                } else {
-                  setFailedMap((prev) => ({
-                    ...prev,
-                    [current.src]: true,
-                  }));
+            <div
+              className="lightbox__stage"
+              onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
+              onTouchStart={(e) => {
+                if (!multi || zoom > 1 || e.touches.length !== 1) return;
+                swipeRef.current = {
+                  startX: e.touches[0].clientX,
+                  startY: e.touches[0].clientY,
+                  active: true,
+                };
+              }}
+              onTouchMove={(e) => {
+                if (!multi || zoom > 1 || !swipeRef.current?.active || e.touches.length !== 1)
+                  return;
+                const dx = e.touches[0].clientX - swipeRef.current.startX;
+                const dy = e.touches[0].clientY - swipeRef.current.startY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                  setDragOffsetX(Math.max(-140, Math.min(140, dx * 0.6)));
                 }
               }}
-            />
-          )}
-        </div>
-        {/* Desktop-only left/right arrows; hidden on mobile/tablet where touch swipe is used */}
-        {multi ? (
-          <>
-            <button
-              className="lightbox__nav lightbox__nav--prev icon-btn"
-              type="button"
-              aria-label="Gambar sebelumnya"
-              onClick={goPrev}
+              onTouchEnd={(e) => {
+                if (!multi || zoom > 1 || !swipeRef.current?.active) return;
+                const endX = e.changedTouches[0]?.clientX ?? swipeRef.current.startX;
+                const dx = endX - swipeRef.current.startX;
+                swipeRef.current = null;
+                setDragOffsetX(0);
+                if (Math.abs(dx) >= 42) {
+                  if (dx < 0) goNext();
+                  else goPrev();
+                }
+              }}
+              onPointerDown={(e) => {
+                if (!multi || zoom > 1 || e.pointerType === "touch") return;
+                swipeRef.current = {
+                  startX: e.clientX,
+                  startY: e.clientY,
+                  active: true,
+                };
+              }}
+              onPointerMove={(e) => {
+                if (!multi || zoom > 1 || e.pointerType === "touch" || !swipeRef.current?.active)
+                  return;
+                const dx = e.clientX - swipeRef.current.startX;
+                setDragOffsetX(Math.max(-140, Math.min(140, dx * 0.6)));
+              }}
+              onPointerUp={(e) => {
+                if (!multi || zoom > 1 || e.pointerType === "touch" || !swipeRef.current?.active)
+                  return;
+                const dx = e.clientX - swipeRef.current.startX;
+                swipeRef.current = null;
+                setDragOffsetX(0);
+                if (Math.abs(dx) >= 46) {
+                  if (dx < 0) goNext();
+                  else goPrev();
+                }
+              }}
             >
-              <RoneIcon name="chevron-left" />
-            </button>
-            <button
-              className="lightbox__nav lightbox__nav--next icon-btn"
-              type="button"
-              aria-label="Gambar berikutnya"
-              onClick={goNext}
-            >
-              <RoneIcon name="chevron-right" />
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      <div className="lightbox__footer">
-        {multi ? (
-          <div className="lightbox__dots" role="tablist" aria-label="Pilih peta atau foto">
-            {state.items.map((item, i) => (
-              <button
-                key={item.label}
-                type="button"
-                role="tab"
-                aria-selected={i === idx ? "true" : "false"}
-                aria-label={item.label}
-                className={`lightbox__dot-pill${i === idx ? " is-active" : ""}`}
-                onClick={() => {
-                  resetZoomAndPan();
-                  setIdx(i);
-                }}
-              >
-                <span>{item.label}</span>
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <p className="lightbox__hint">
-          {multi
-            ? "Geser kiri/kanan untuk pindah foto · Ketuk dua kali untuk perbesar/reset"
-            : "Ketuk dua kali untuk perbesar atau tampilkan ukuran penuh"}
-        </p>
-      </div>
-    </div>
+              {isCurrentFailed ? (
+                <SeismicMediaFallback label={current.label} caption={current.caption} />
+              ) : (
+                <motion.img
+                  key={`lb-img-${current.src}`}
+                  src={current.src}
+                  alt={current.caption || current.label}
+                  draggable={false}
+                  initial={{ opacity: 0.4, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: zoom, x: dragOffsetX }}
+                  transition={{ duration: 0.24, ease: TAIMO_EASE }}
+                  referrerPolicy="no-referrer"
+                  onError={() =>
+                    setFailedMap((prev) => ({
+                      ...prev,
+                      [current.src]: true,
+                    }))
+                  }
+                />
+              )}
+            </div>
+            <div className="lightbox__footer">
+              {multi ? (
+                <div className="lightbox__pills" role="tablist" aria-label="Pilih foto">
+                  {state.items.map((item, i) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === idx ? "true" : "false"}
+                      className={`lightbox__pill${i === idx ? " is-active" : ""}`}
+                      onClick={() => {
+                        playUiSound("tab");
+                        setZoom(1);
+                        setDragOffsetX(0);
+                        setIdx(i);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="lightbox__hint">
+                {multi
+                  ? "Geser foto kiri/kanan untuk berpindah · Ketuk 2× untuk memperbesar"
+                  : "Ketuk 2× untuk memperbesar atau reset · gunakan tombol atas untuk kontrol zoom"}
+              </p>
+            </div>
+          </motion.div>
+        );
+      })() : null}
+    </AnimatePresence>
   );
 }
