@@ -266,6 +266,7 @@ export function GempaRoneApp({
 
   // Responsive Mobile/Tablet UX states
   const [mobileAnalyticsOpen, setMobileAnalyticsOpen] = useState(false);
+  const [mapPanelOpen, setMapPanelOpen] = useState(false);
   const [tableDisplayMode, setTableDisplayMode] = useState<"auto" | "cards" | "table">(
     "auto"
   );
@@ -368,9 +369,15 @@ export function GempaRoneApp({
     );
   }, [showToast]);
 
-  // Switch navigation tab and update browser URL cleanly
+  // Switch navigation tab, auto-dismiss any open popups/sheets, and update browser URL cleanly
   const navigateTab = useCallback((tab: RoneTabKey) => {
     playUiSound("tab");
+    setDetailTarget(null);
+    setLightboxState(null);
+    setMobileAnalyticsOpen(false);
+    setMapPanelOpen(
+      tab === "map" && typeof window !== "undefined" && window.innerWidth >= 768
+    );
     setActiveTab(tab);
     setAlertsQuery("");
     setAlertsMinMag(0);
@@ -378,8 +385,31 @@ export function GempaRoneApp({
     const navItem = NAV_ITEMS.find((n) => n.key === tab);
     const targetPath = tab === "docs" ? "/docs" : navItem?.path || "/";
     try {
-      window.history.pushState({}, "", targetPath);
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, "", targetPath);
+      }
     } catch {}
+  }, []);
+
+  // Sync browser Back/Forward navigation and auto-close any open popups
+  useEffect(() => {
+    const onPopState = () => {
+      setDetailTarget(null);
+      setLightboxState(null);
+      setMobileAnalyticsOpen(false);
+      const path = window.location.pathname.replace(/\/+$/, "") || "/";
+      if (path === "/docs") {
+        setActiveTab("docs");
+        setMapPanelOpen(false);
+        return;
+      }
+      const matched = NAV_ITEMS.find((n) => n.path === path);
+      const nextTab: RoneTabKey = matched ? matched.key : "home";
+      setActiveTab(nextTab);
+      setMapPanelOpen(nextTab === "map" && window.innerWidth >= 768);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   // Real-time refresh of live endpoints (runs immediately on mount, every 30s, or on manual click)
@@ -3336,7 +3366,15 @@ export function GempaRoneApp({
                     if (found) setDetailTarget({ kind: "realtime", data: found });
                   }}
                 >
-                  <details className="map-panel" id="layers" open>
+                  <details
+                    className="map-panel"
+                    id="layers"
+                    open={mapPanelOpen}
+                    onToggle={(e) => {
+                      const nextOpen = e.currentTarget.open;
+                      setMapPanelOpen(nextOpen);
+                    }}
+                  >
                     <summary>
                       <RoneIcon name="layers" />
                       <span>Lapisan Peta</span>

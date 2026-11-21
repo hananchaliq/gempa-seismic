@@ -488,14 +488,54 @@ export function RoneDetailSheet({
     };
   }, [target]);
 
+  const [sheetDragY, setSheetDragY] = useState(0);
+  const sheetTouchRef = React.useRef<{ startY: number; startX: number; active: boolean } | null>(
+    null
+  );
+
   useEffect(() => {
     if (!target) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
   }, [target, onClose]);
+
+  const handleSheetTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    sheetTouchRef.current = {
+      startY: e.touches[0].clientY,
+      startX: e.touches[0].clientX,
+      active: true,
+    };
+  };
+
+  const handleSheetTouchMove = (e: React.TouchEvent) => {
+    if (!sheetTouchRef.current?.active || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - sheetTouchRef.current.startY;
+    const dx = e.touches[0].clientX - sheetTouchRef.current.startX;
+    if (dy > 0 && dy > Math.abs(dx)) {
+      setSheetDragY(Math.min(220, dy * 0.72));
+    }
+  };
+
+  const handleSheetTouchEnd = (e: React.TouchEvent) => {
+    if (!sheetTouchRef.current?.active) return;
+    const endY = e.changedTouches[0]?.clientY ?? sheetTouchRef.current.startY;
+    const dy = endY - sheetTouchRef.current.startY;
+    sheetTouchRef.current = null;
+    setSheetDragY(0);
+    if (dy >= 76) {
+      playUiSound("click");
+      onClose();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -541,6 +581,10 @@ export function RoneDetailSheet({
           sub = `${target.data.province} · ${new Date(target.data.origin_time).getUTCFullYear()}`;
         }
 
+        const isCompactSheet =
+          typeof window !== "undefined" &&
+          window.matchMedia("(max-width: 768px)").matches;
+
         return (
           <motion.div
             key="detail-sheet-backdrop"
@@ -548,9 +592,12 @@ export function RoneDetailSheet({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
+            transition={{ duration: 0.2 }}
             onClick={(e) => {
-              if (e.target === e.currentTarget) onClose();
+              if (e.target === e.currentTarget) {
+                playUiSound("click");
+                onClose();
+              }
             }}
           >
             <motion.div
@@ -560,12 +607,39 @@ export function RoneDetailSheet({
               role="dialog"
               aria-modal="true"
               aria-labelledby="detail-title"
-              initial={{ x: "100%", opacity: 0.7 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "100%", opacity: 0.6 }}
-              transition={SHEET_SPRING}
+              initial={
+                isCompactSheet ? { y: "100%", opacity: 0.8 } : { x: "100%", opacity: 0.7 }
+              }
+              animate={
+                isCompactSheet
+                  ? { y: sheetDragY, opacity: 1 }
+                  : { x: 0, opacity: 1 }
+              }
+              exit={
+                isCompactSheet ? { y: "100%", opacity: 0.6 } : { x: "100%", opacity: 0.6 }
+              }
+              transition={sheetDragY > 0 ? { duration: 0 } : SHEET_SPRING}
             >
-              <div className="sheet__head">
+              <button
+                type="button"
+                className="sheet__grabber-row"
+                aria-label="Geser ke bawah atau ketuk untuk menutup detail"
+                onClick={() => {
+                  playUiSound("click");
+                  onClose();
+                }}
+                onTouchStart={handleSheetTouchStart}
+                onTouchMove={handleSheetTouchMove}
+                onTouchEnd={handleSheetTouchEnd}
+              >
+                <span className="sheet__grabber" aria-hidden="true" />
+              </button>
+              <div
+                className="sheet__head"
+                onTouchStart={handleSheetTouchStart}
+                onTouchMove={handleSheetTouchMove}
+                onTouchEnd={handleSheetTouchEnd}
+              >
                 <span id="detail-badge">
                   <MagDial magnitude={ev.magnitude} size="compact" />
                 </span>
@@ -989,7 +1063,7 @@ export function RoneLightbox({
               className="lightbox__stage"
               onDoubleClick={() => setZoom((z) => (z > 1 ? 1 : 2))}
               onTouchStart={(e) => {
-                if (!multi || zoom > 1 || e.touches.length !== 1) return;
+                if (zoom > 1 || e.touches.length !== 1) return;
                 swipeRef.current = {
                   startX: e.touches[0].clientX,
                   startY: e.touches[0].clientY,
@@ -997,21 +1071,28 @@ export function RoneLightbox({
                 };
               }}
               onTouchMove={(e) => {
-                if (!multi || zoom > 1 || !swipeRef.current?.active || e.touches.length !== 1)
+                if (zoom > 1 || !swipeRef.current?.active || e.touches.length !== 1)
                   return;
                 const dx = e.touches[0].clientX - swipeRef.current.startX;
                 const dy = e.touches[0].clientY - swipeRef.current.startY;
-                if (Math.abs(dx) > Math.abs(dy)) {
+                if (multi && Math.abs(dx) > Math.abs(dy)) {
                   setDragOffsetX(Math.max(-140, Math.min(140, dx * 0.6)));
                 }
               }}
               onTouchEnd={(e) => {
-                if (!multi || zoom > 1 || !swipeRef.current?.active) return;
+                if (zoom > 1 || !swipeRef.current?.active) return;
                 const endX = e.changedTouches[0]?.clientX ?? swipeRef.current.startX;
+                const endY = e.changedTouches[0]?.clientY ?? swipeRef.current.startY;
                 const dx = endX - swipeRef.current.startX;
+                const dy = endY - swipeRef.current.startY;
                 swipeRef.current = null;
                 setDragOffsetX(0);
-                if (Math.abs(dx) >= 42) {
+                if (dy >= 78 && dy > Math.abs(dx) * 1.35) {
+                  playUiSound("click");
+                  onClose();
+                  return;
+                }
+                if (multi && Math.abs(dx) >= 42) {
                   if (dx < 0) goNext();
                   else goPrev();
                 }

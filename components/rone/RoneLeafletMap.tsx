@@ -2,6 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import type LType from "leaflet";
+import { AnimatePresence, motion } from "motion/react";
+import { Check, Crosshair, Layers, Minus, Plus } from "lucide-react";
 import {
   fmtDateTime,
   fmtDepth,
@@ -9,7 +11,7 @@ import {
   magColorHex,
   RoneStation,
 } from "@/lib/rone/format";
-import { iconHTML } from "./RoneIcons";
+import { playUiSound, TAIMO_EASE } from "@/lib/rone/motionSystem";
 
 export interface MapQuakePoint {
   event_id: string;
@@ -22,19 +24,34 @@ export interface MapQuakePoint {
   province?: string;
 }
 
+type AppleMapStyleMode = "explore" | "topo" | "satellite";
+
 const INDONESIA = { center: [-2.6, 118.0] as [number, number], zoom: 5 };
 const INDONESIA_BOUNDS: [[number, number], [number, number]] = [
   [-11.5, 94.5],
   [6.5, 141.5],
 ];
-const OSM = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
-const ESRI = "&copy; Esri, OSM";
+
+const ESRI_ATTR = "&copy; Esri, GEBCO, Garmin";
+const ESRI_IMG_ATTR = "&copy; Esri, Maxar";
 const ESRI_ROOT = "https://server.arcgisonline.com/ArcGIS/rest/services";
 
-const canvasUrl = (dark: boolean, kind: "Base" | "Reference") =>
-  `${ESRI_ROOT}/Canvas/World_${dark ? "Dark" : "Light"}_Gray_${kind}/MapServer/tile/{z}/{y}/{x}`;
+const exploreLightUrl = `${ESRI_ROOT}/World_Street_Map/MapServer/tile/{z}/{y}/{x}`;
+const exploreDarkBaseUrl = `${ESRI_ROOT}/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`;
+const exploreDarkLabelsUrl = `${ESRI_ROOT}/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`;
+const topoTileUrl = `${ESRI_ROOT}/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`;
+const satelliteTileUrl = `${ESRI_ROOT}/World_Imagery/MapServer/tile/{z}/{y}/{x}`;
+const satelliteLabelsUrl = `${ESRI_ROOT}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`;
 
-export const magRadius = (m: number) => Math.max(3, 2.5 + (m - 2) * 2.4);
+export const magRadius = (m: number) => Math.max(3.4, 2.7 + (m - 2) * 2.4);
+
+function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 interface RoneLeafletMapProps {
   id?: string;
@@ -53,7 +70,6 @@ interface RoneLeafletMapProps {
   isDark: boolean;
   onSelectEvent?: (ev: MapQuakePoint) => void;
   onSelectLatest?: (ev: MapQuakePoint) => void;
-  // Optional extra layers for the full /map/ seismicity explorer
   extraLayers?: {
     archive3m?: MapQuakePoint[];
     archive5y?: MapQuakePoint[];
@@ -88,14 +104,16 @@ export function RoneLeafletMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LType.Map | null>(null);
   const LRef = useRef<typeof LType | null>(null);
+  const baseLayerGroupRef = useRef<LType.LayerGroup | null>(null);
   const quakesGroupRef = useRef<LType.LayerGroup | null>(null);
   const extraGroupRef = useRef<LType.LayerGroup | null>(null);
   const latestMarkerRef = useRef<LType.Marker | null>(null);
   const pickedMarkerRef = useRef<LType.Marker | null>(null);
-  const canvasBaseRef = useRef<LType.TileLayer | null>(null);
-  const canvasLabelsRef = useRef<LType.TileLayer | null>(null);
   const hasCenteredRef = useRef<string | null>(null);
+
   const [mapReady, setMapReady] = useState(false);
+  const [styleMode, setStyleMode] = useState<AppleMapStyleMode>("explore");
+  const [styleMenuOpen, setStyleMenuOpen] = useState(false);
 
   const onSelectEventRef = useRef(onSelectEvent);
   const onSelectLatestRef = useRef(onSelectLatest);
@@ -104,10 +122,11 @@ export function RoneLeafletMap({
     onSelectLatestRef.current = onSelectLatest;
   }, [onSelectEvent, onSelectLatest]);
 
-  // Initialize Leaflet map once
+  // Initialize lightweight, ultra-reliable Leaflet map once
   useEffect(() => {
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
+    let settleTimer = 0;
 
     async function init() {
       const L = (await import("leaflet")).default;
@@ -131,11 +150,13 @@ export function RoneLeafletMap({
         center: initialCenter,
         zoom: initialZoom,
         minZoom: 2,
-        maxZoom: 16,
+        maxZoom: 18,
         worldCopyJump: true,
         zoomSnap: 0.5,
         zoomDelta: 0.5,
         preferCanvas: true,
+        fadeAnimation: true,
+        zoomAnimation: true,
         scrollWheelZoom,
         zoomControl: false,
         attributionControl: true,
@@ -145,185 +166,104 @@ export function RoneLeafletMap({
       labelsPane.style.zIndex = "350";
       labelsPane.style.pointerEvents = "none";
 
-      const darkNow = document.documentElement.dataset.theme === "dark";
-      const canvasBase = L.tileLayer(canvasUrl(darkNow, "Base"), {
-        attribution: ESRI,
-        maxZoom: 16,
-        updateWhenIdle: true,
-        keepBuffer: 2,
-      });
-      const canvasLabels = L.tileLayer(canvasUrl(darkNow, "Reference"), {
-        maxZoom: 16,
-        pane: "labels",
-        updateWhenIdle: true,
-        keepBuffer: 2,
-      });
-      canvasBaseRef.current = canvasBase;
-      canvasLabelsRef.current = canvasLabels;
-
-      const base = [
-        {
-          key: "neutral",
-          label: "Netral",
-          layer: L.layerGroup([canvasBase, canvasLabels]),
-          thumb: () =>
-            `${ESRI_ROOT}/Canvas/World_${
-              document.documentElement.dataset.theme === "dark" ? "Dark" : "Light"
-            }_Gray_Base/MapServer/tile/4/8/13`,
-        },
-        {
-          key: "streets",
-          label: "Jalan",
-          layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-            attribution: OSM,
-            maxZoom: 19,
-            updateWhenIdle: true,
-          }),
-          thumb: () => "https://tile.openstreetmap.org/4/13/8.png",
-        },
-        {
-          key: "satellite",
-          label: "Satelit",
-          layer: L.tileLayer(`${ESRI_ROOT}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
-            attribution: "Tiles &copy; Esri",
-            maxZoom: 18,
-            updateWhenIdle: true,
-          }),
-          thumb: () => `${ESRI_ROOT}/World_Imagery/MapServer/tile/4/8/13`,
-        },
-      ];
-
-      base[0].layer.addTo(map);
-
-      L.control
-        .zoom({
-          position: zoomPosition,
-          zoomInText: iconHTML("plus"),
-          zoomOutText: iconHTML("minus"),
-          zoomInTitle: "Perbesar",
-          zoomOutTitle: "Perkecil",
-        })
-        .addTo(map);
-
-      // Custom BasemapControl identical to ridwaanhall/gempa
-      const BasemapControl = L.Control.extend({
-        onAdd() {
-          let current = base[0];
-          const wrap = document.createElement("div");
-          wrap.className = "leaflet-control basemap";
-          wrap.dataset.open = "false";
-
-          const button = document.createElement("button");
-          button.className = "map-btn";
-          button.type = "button";
-          button.setAttribute("aria-label", "Pilih peta dasar");
-          button.setAttribute("aria-expanded", "false");
-          button.setAttribute("aria-haspopup", "menu");
-          button.title = "Peta dasar";
-          button.innerHTML = iconHTML("layers");
-
-          const menu = document.createElement("div");
-          menu.className = "basemap__menu";
-          menu.setAttribute("role", "menu");
-          menu.setAttribute("aria-label", "Peta dasar");
-
-          const setOpen = (open: boolean) => {
-            wrap.dataset.open = String(open);
-            button.setAttribute("aria-expanded", String(open));
-          };
-
-          const optionBtns: HTMLButtonElement[] = base.map((item) => {
-            const opt = document.createElement("button");
-            opt.className = "basemap__opt";
-            opt.type = "button";
-            opt.setAttribute("role", "menuitemradio");
-            opt.dataset.base = item.key;
-            opt.setAttribute("aria-checked", String(item === current));
-            opt.innerHTML = `<img src="${item.thumb()}" alt="" loading="lazy" width="44" height="44" referrerpolicy="no-referrer" onerror="this.style.display='none'" /><span>${item.label}</span>${iconHTML("check", "icon basemap__check")}`;
-            opt.addEventListener("click", () => {
-              if (item !== current) {
-                map.removeLayer(current.layer);
-                item.layer.addTo(map);
-                current = item;
-                optionBtns.forEach((o) =>
-                  o.setAttribute("aria-checked", String(o.dataset.base === item.key))
-                );
-              }
-              setOpen(false);
-              button.focus();
-            });
-            menu.appendChild(opt);
-            return opt;
-          });
-
-          wrap.append(button, menu);
-          button.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setOpen(wrap.dataset.open !== "true");
-          });
-          document.addEventListener("click", (e) => {
-            if (!wrap.contains(e.target as Node)) setOpen(false);
-          });
-          L.DomEvent.disableClickPropagation(wrap);
-          L.DomEvent.disableScrollPropagation(wrap);
-          return wrap;
-        },
-      });
-
-      new BasemapControl({ position: "topright" }).addTo(map);
       map.attributionControl.setPrefix(false);
 
+      const baseGroup = L.layerGroup().addTo(map);
       const extraGroup = L.layerGroup().addTo(map);
       const quakesGroup = L.layerGroup().addTo(map);
+
+      baseLayerGroupRef.current = baseGroup;
       extraGroupRef.current = extraGroup;
       quakesGroupRef.current = quakesGroup;
       mapRef.current = map;
 
       if (fitArchipelago) {
-        map.fitBounds(INDONESIA_BOUNDS, { animate: false });
+        map.fitBounds(INDONESIA_BOUNDS, { animate: false, padding: [18, 18] });
       }
 
       resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize();
+        map.invalidateSize({ animate: false });
       });
       resizeObserver.observe(el);
+
+      settleTimer = window.setTimeout(() => {
+        if (!cancelled) {
+          map.invalidateSize({ animate: false });
+        }
+      }, 160);
+
       setMapReady(true);
     }
 
-    let timerId = 0;
     const rafId = window.requestAnimationFrame(() => {
-      timerId = window.setTimeout(() => {
-        init();
-      }, 40);
+      init();
     });
 
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(rafId);
-      window.clearTimeout(timerId);
+      window.clearTimeout(settleTimer);
       resizeObserver?.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync basemap tiles when theme changes
+  // Switch Apple-inspired Retina basemap tiles smoothly when styleMode or theme changes
   useEffect(() => {
-    if (!mapReady || !canvasBaseRef.current || !canvasLabelsRef.current) return;
-    canvasBaseRef.current.setUrl(canvasUrl(isDark, "Base"));
-    canvasLabelsRef.current.setUrl(canvasUrl(isDark, "Reference"));
-    if (containerRef.current) {
-      const img = containerRef.current.querySelector('[data-base="neutral"] img');
-      if (img) {
-        img.setAttribute(
-          "src",
-          `${ESRI_ROOT}/Canvas/World_${isDark ? "Dark" : "Light"}_Gray_Base/MapServer/tile/4/8/13`
-        );
+    const L = LRef.current;
+    const baseGroup = baseLayerGroupRef.current;
+    if (!mapReady || !L || !baseGroup) return;
+
+    baseGroup.clearLayers();
+
+    if (styleMode === "explore") {
+      if (isDark) {
+        L.tileLayer(exploreDarkBaseUrl, {
+          attribution: ESRI_ATTR,
+          maxNativeZoom: 16,
+          maxZoom: 18,
+          keepBuffer: 3,
+        }).addTo(baseGroup);
+        L.tileLayer(exploreDarkLabelsUrl, {
+          maxNativeZoom: 16,
+          maxZoom: 18,
+          pane: "labels",
+          keepBuffer: 3,
+        }).addTo(baseGroup);
+      } else {
+        L.tileLayer(exploreLightUrl, {
+          attribution: ESRI_ATTR,
+          maxNativeZoom: 18,
+          maxZoom: 18,
+          keepBuffer: 3,
+        }).addTo(baseGroup);
       }
+    } else if (styleMode === "topo") {
+      L.tileLayer(topoTileUrl, {
+        attribution: ESRI_ATTR,
+        maxNativeZoom: 18,
+        maxZoom: 18,
+        keepBuffer: 3,
+      }).addTo(baseGroup);
+    } else {
+      L.tileLayer(satelliteTileUrl, {
+        attribution: ESRI_IMG_ATTR,
+        maxNativeZoom: 17,
+        maxZoom: 18,
+        keepBuffer: 3,
+      }).addTo(baseGroup);
+      L.tileLayer(satelliteLabelsUrl, {
+        maxNativeZoom: 16,
+        maxZoom: 18,
+        pane: "labels",
+        keepBuffer: 3,
+      }).addTo(baseGroup);
     }
-  }, [isDark, mapReady]);
+  }, [styleMode, isDark, mapReady]);
 
   // Render extra layers (for Peta /map/ page)
   useEffect(() => {
@@ -336,19 +276,19 @@ export function RoneLeafletMap({
     if (!extraLayers) return;
 
     const accentColor = isDark ? "#f07a3c" : "#c2410c";
-    const stationColor = isDark ? "#c4baaa" : "#4f463b";
+    const stationColor = isDark ? "#cbd5e1" : "#475569";
 
     if (extraLayers.faultsGlobal) {
       L.geoJSON(extraLayers.faultsGlobal, {
         interactive: false,
-        style: { color: accentColor, weight: 1, opacity: 0.65 },
+        style: { color: accentColor, weight: 1.1, opacity: 0.6 },
       }).addTo(extraGroup);
     }
 
     if (extraLayers.faultsIndonesia) {
       L.geoJSON(extraLayers.faultsIndonesia, {
         interactive: false,
-        style: { color: accentColor, weight: 1.3, opacity: 0.75 },
+        style: { color: accentColor, weight: 1.4, opacity: 0.8 },
       }).addTo(extraGroup);
     }
 
@@ -356,14 +296,19 @@ export function RoneLeafletMap({
       if (!stations?.length) return;
       stations.forEach((s) => {
         L.circleMarker([s.latitude, s.longitude], {
-          radius: 3,
+          radius: 3.2,
           weight: 1,
-          color: stationColor,
+          color: isDark ? "rgba(9,19,33,.8)" : "rgba(255,255,255,.92)",
           fillColor: stationColor,
-          fillOpacity: 0.35,
+          fillOpacity: 0.6,
         })
           .bindPopup(
-            `<div><p class="popup__title">${s.code}</p><p class="popup__meta">${s.name} · ${s.network}</p></div>`
+            `<div><p class="am-popup__title">${escapeHtml(
+              s.code
+            )}</p><p class="am-popup__meta">${escapeHtml(s.name)} · ${escapeHtml(
+              s.network
+            )}</p></div>`,
+            { maxWidth: 240 }
           )
           .addTo(extraGroup);
       });
@@ -380,15 +325,19 @@ export function RoneLeafletMap({
           const color = magColorHex(ev.magnitude, isDark);
           L.circleMarker([ev.latitude, ev.longitude], {
             radius: magRadius(ev.magnitude) * scale,
-            color: isDark ? "rgba(0,0,0,.6)" : "rgba(255,255,255,.9)",
+            color: isDark ? "rgba(10,16,28,.75)" : "rgba(255,255,255,.92)",
             weight: 1,
             fillColor: color,
-            fillOpacity: 0.45,
+            fillOpacity: 0.48,
           })
             .bindPopup(
-              `<div><p class="popup__title">M ${fmtMag(ev.magnitude)} · ${
+              `<div><p class="am-popup__title">M ${fmtMag(ev.magnitude)} · ${escapeHtml(
                 ev.region || ev.province || ""
-              }</p><p class="popup__meta">${fmtDateTime(ev.origin_time)}</p><p class="popup__meta">Kedalaman ${fmtDepth(ev.depth_km)}</p></div>`,
+              )}</p><p class="am-popup__meta">${escapeHtml(
+                fmtDateTime(ev.origin_time)
+              )}</p><p class="am-popup__meta">Kedalaman ${escapeHtml(
+                fmtDepth(ev.depth_km)
+              )}</p></div>`,
               { maxWidth: 260 }
             )
             .addTo(extraGroup);
@@ -396,10 +345,10 @@ export function RoneLeafletMap({
     };
 
     renderArchive(extraLayers.archive5y, 0.6);
-    renderArchive(extraLayers.archive3m, 0.7);
+    renderArchive(extraLayers.archive3m, 0.72);
   }, [extraLayers, isDark, mapReady]);
 
-  // Render earthquake circle markers + latest epicenter pulsing marker
+  // Render earthquake markers + latest epicenter pulsing ring & Apple frosted callout
   useEffect(() => {
     const L = LRef.current;
     const map = mapRef.current;
@@ -411,52 +360,84 @@ export function RoneLeafletMap({
     [...events]
       .sort((a, b) => a.magnitude - b.magnitude)
       .forEach((ev) => {
+        if (!Number.isFinite(ev.latitude) || !Number.isFinite(ev.longitude)) return;
         const color = magColorHex(ev.magnitude, isDark);
+        const radius = magRadius(ev.magnitude) * markerScale;
+
+        // Subtle soft halo behind stronger earthquakes (M >= 5.0)
+        if (ev.magnitude >= 5.0) {
+          L.circleMarker([ev.latitude, ev.longitude], {
+            radius: radius * 1.9,
+            stroke: false,
+            fillColor: color,
+            fillOpacity: faintMarkers ? 0.12 : 0.2,
+            interactive: false,
+          }).addTo(quakesGroup);
+        }
+
         const marker = L.circleMarker([ev.latitude, ev.longitude], {
-          radius: magRadius(ev.magnitude) * markerScale,
-          color: isDark ? "rgba(0,0,0,.6)" : "rgba(255,255,255,.9)",
-          weight: 1,
+          radius,
+          color: isDark ? "rgba(10,16,28,.82)" : "rgba(255,255,255,.94)",
+          weight: 1.25,
           fillColor: color,
-          fillOpacity: faintMarkers ? 0.45 : 0.85,
+          fillOpacity: faintMarkers ? 0.54 : 0.88,
         });
 
         if (onSelectEventRef.current) {
-          marker.on("click", () => onSelectEventRef.current?.(ev));
+          marker.on("click", () => {
+            playUiSound("click");
+            onSelectEventRef.current?.(ev);
+          });
         } else {
           marker.bindPopup(
-            `<div><p class="popup__title">M ${fmtMag(ev.magnitude)} · ${
+            `<div><p class="am-popup__title">M ${fmtMag(ev.magnitude)} · ${escapeHtml(
               ev.region || ev.province || ""
-            }</p><p class="popup__meta">${fmtDateTime(ev.origin_time)}</p><p class="popup__meta">Kedalaman ${fmtDepth(ev.depth_km)}</p></div>`,
+            )}</p><p class="am-popup__meta">${escapeHtml(
+              fmtDateTime(ev.origin_time)
+            )}</p><p class="am-popup__meta">Kedalaman ${escapeHtml(
+              fmtDepth(ev.depth_km)
+            )}</p></div>`,
             { maxWidth: 260 }
           );
         }
         marker.addTo(quakesGroup);
       });
 
-    // Latest marker with 3 pulsing rings + permanent dark "Terbaru · M4,9" callout
     latestMarkerRef.current?.remove();
     latestMarkerRef.current = null;
 
-    if (latestEvent && (!selectedEvent || selectedEvent.event_id !== latestEvent.event_id)) {
+    if (
+      latestEvent &&
+      Number.isFinite(latestEvent.latitude) &&
+      Number.isFinite(latestEvent.longitude) &&
+      (!selectedEvent || selectedEvent.event_id !== latestEvent.event_id)
+    ) {
       const color = magColorHex(latestEvent.magnitude, isDark);
       const divIcon = L.divIcon({
-        className: "epicenter",
-        html: `<div style="--c: ${color}; width: 80px; height: 80px; position: relative;"><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__ring"></span><span class="epicenter__core"></span></div>`,
-        iconSize: [80, 80],
-        iconAnchor: [40, 40],
+        className: "am-marker-wrap",
+        html: `
+          <div style="--c: ${color}; width: 76px; height: 76px; position: relative;">
+            <div class="am-callout">
+              <span class="am-callout__dot"></span>
+              <span>Terbaru · M${fmtMag(latestEvent.magnitude)}</span>
+            </div>
+            <span class="epicenter__ring"></span>
+            <span class="epicenter__ring"></span>
+            <span class="epicenter__ring"></span>
+            <span class="epicenter__core"></span>
+          </div>
+        `,
+        iconSize: [76, 76],
+        iconAnchor: [38, 38],
       });
 
       const marker = L.marker([latestEvent.latitude, latestEvent.longitude], {
         icon: divIcon,
         zIndexOffset: 1000,
-      }).bindTooltip(`Terbaru · M${fmtMag(latestEvent.magnitude)}`, {
-        permanent: true,
-        direction: "top",
-        offset: [0, -14],
-        className: "latest-tip",
       });
 
       marker.on("click", () => {
+        playUiSound("click");
         if (onSelectLatestRef.current) onSelectLatestRef.current(latestEvent);
         else if (onSelectEventRef.current) onSelectEventRef.current(latestEvent);
       });
@@ -483,7 +464,7 @@ export function RoneLeafletMap({
     mapReady,
   ]);
 
-  // Render picked event selection ring + flyTo
+  // Render picked event target ring + smooth flyTo glide
   useEffect(() => {
     const L = LRef.current;
     const map = mapRef.current;
@@ -492,7 +473,13 @@ export function RoneLeafletMap({
     pickedMarkerRef.current?.remove();
     pickedMarkerRef.current = null;
 
-    if (!selectedEvent) return;
+    if (
+      !selectedEvent ||
+      !Number.isFinite(selectedEvent.latitude) ||
+      !Number.isFinite(selectedEvent.longitude)
+    ) {
+      return;
+    }
 
     const isLatest = latestEvent?.event_id === selectedEvent.event_id;
     const color = magColorHex(selectedEvent.magnitude, isDark);
@@ -502,19 +489,23 @@ export function RoneLeafletMap({
 
     const marker = L.marker([selectedEvent.latitude, selectedEvent.longitude], {
       icon: L.divIcon({
-        className: "picked is-new",
-        html: `<div style="--c: ${color}; width: 44px; height: 44px; position: relative;"><span class="picked__ring"></span><span class="picked__dot"></span></div>`,
+        className: "am-marker-wrap",
+        html: `
+          <div style="--c: ${color}; width: 44px; height: 44px; position: relative;">
+            <div class="am-callout">
+              <span class="am-callout__dot"></span>
+              <span>${escapeHtml(label)}</span>
+            </div>
+            <span class="picked__ring"></span>
+            <span class="picked__dot"></span>
+          </div>
+        `,
         iconSize: [44, 44],
         iconAnchor: [22, 22],
       }),
       keyboard: false,
       interactive: false,
       zIndexOffset: 2000,
-    }).bindTooltip(label, {
-      permanent: true,
-      direction: "top",
-      offset: [0, -20],
-      className: "picked-tip",
     });
 
     marker.addTo(map);
@@ -524,18 +515,216 @@ export function RoneLeafletMap({
     map.flyTo(
       [selectedEvent.latitude, selectedEvent.longitude],
       Math.max(map.getZoom(), 6),
-      { duration: reduce ? 0 : 0.6 }
+      { duration: reduce ? 0 : 0.65, easeLinearity: 0.25 }
     );
   }, [selectedEvent, latestEvent, isDark, mapReady]);
+
+  // Close style picker when clicking outside, pressing Escape, or panning/zooming the map
+  useEffect(() => {
+    if (!styleMenuOpen) return;
+    const closeMenu = () => setStyleMenuOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeMenu();
+    };
+    const map = mapRef.current;
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("keydown", onKey);
+    map?.on("movestart", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("keydown", onKey);
+      map?.off("movestart", closeMenu);
+    };
+  }, [styleMenuOpen]);
+
+  const handleZoomIn = () => {
+    playUiSound("click");
+    mapRef.current?.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    playUiSound("click");
+    mapRef.current?.zoomOut();
+  };
+
+  const handleRecenter = () => {
+    playUiSound("click");
+    const map = mapRef.current;
+    if (!map) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (centerOnLatest && latestEvent) {
+      map.flyTo([latestEvent.latitude, latestEvent.longitude], latestZoom, {
+        duration: reduce ? 0 : 0.6,
+      });
+    } else if (fitArchipelago) {
+      map.fitBounds(INDONESIA_BOUNDS, {
+        animate: !reduce,
+        padding: [18, 18],
+      });
+    } else {
+      map.flyTo(INDONESIA.center, INDONESIA.zoom, {
+        duration: reduce ? 0 : 0.6,
+      });
+    }
+  };
+
+  const styleOptions: Array<{
+    key: AppleMapStyleMode;
+    label: string;
+    thumbClass: string;
+  }> = [
+    { key: "explore", label: "Eksplorasi", thumbClass: "am-style-card__thumb--explore" },
+    { key: "topo", label: "Topografi", thumbClass: "am-style-card__thumb--topo" },
+    { key: "satellite", label: "Satelit", thumbClass: "am-style-card__thumb--satellite" },
+  ];
 
   return (
     <div
       id={id}
       className={`${className} map-host`}
+      data-map-dark={isDark ? "true" : "false"}
+      data-map-style={styleMode}
       role="region"
       aria-label={ariaLabel}
     >
       <div ref={containerRef} className="map-canvas" />
+      <div className="am-vignette" aria-hidden="true" />
+
+      {/* Top-Right Apple Maps Motion UI Style Switcher */}
+      <div
+        className="am-controls-tr"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <motion.div
+          className="am-rail"
+          role="toolbar"
+          aria-label="Gaya peta"
+          initial={{ opacity: 0, y: -6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.32, ease: TAIMO_EASE }}
+        >
+          <motion.button
+            type="button"
+            className="am-btn"
+            aria-label="Pilih gaya peta"
+            aria-expanded={styleMenuOpen}
+            aria-haspopup="menu"
+            aria-pressed={styleMenuOpen}
+            title="Gaya peta"
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              playUiSound("click");
+              setStyleMenuOpen((o) => !o);
+            }}
+          >
+            <Layers size={16} strokeWidth={2.1} />
+          </motion.button>
+        </motion.div>
+
+        <AnimatePresence>
+          {styleMenuOpen ? (
+            <motion.div
+              className="am-style-sheet"
+              role="menu"
+              aria-label="Pilih gaya peta"
+              initial={{ opacity: 0, scale: 0.92, y: -6, filter: "blur(6px)" }}
+              animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+              exit={{ opacity: 0, scale: 0.94, y: -4, filter: "blur(4px)" }}
+              transition={{ duration: 0.22, ease: TAIMO_EASE }}
+            >
+              <p className="am-style-sheet__title">
+                <span>Tampilan Peta</span>
+              </p>
+              <div className="am-style-grid">
+                {styleOptions.map((opt) => {
+                  const active = styleMode === opt.key;
+                  return (
+                    <motion.button
+                      key={opt.key}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={active}
+                      className="am-style-card"
+                      whileHover={{ y: -1.5 }}
+                      whileTap={{ scale: 0.94 }}
+                      transition={{ duration: 0.16, ease: TAIMO_EASE }}
+                      onClick={() => {
+                        playUiSound("tab");
+                        setStyleMode(opt.key);
+                        setStyleMenuOpen(false);
+                      }}
+                    >
+                      <span className={`am-style-card__thumb ${opt.thumbClass}`}>
+                        <AnimatePresence>
+                          {active ? (
+                            <motion.span
+                              className="am-style-card__check"
+                              initial={{ scale: 0.4, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              exit={{ scale: 0.4, opacity: 0 }}
+                              transition={{ type: "spring", stiffness: 520, damping: 28 }}
+                            >
+                              <Check size={10} strokeWidth={3} />
+                            </motion.span>
+                          ) : null}
+                        </AnimatePresence>
+                      </span>
+                      <span className="am-style-card__label">{opt.label}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+      </div>
+
+      {/* Apple Maps Motion UI Zoom & Recenter Capsule */}
+      <motion.div
+        className="am-zoom-stack"
+        data-pos={zoomPosition}
+        onMouseDown={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+        initial={{ opacity: 0, y: 6, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.34, delay: 0.04, ease: TAIMO_EASE }}
+      >
+        <div className="am-rail" role="group" aria-label="Kontrol zoom peta">
+          <motion.button
+            type="button"
+            className="am-btn"
+            aria-label="Perbesar peta"
+            title="Perbesar"
+            whileTap={{ scale: 0.9 }}
+            onClick={handleZoomIn}
+          >
+            <Plus size={16} strokeWidth={2.2} />
+          </motion.button>
+          <motion.button
+            type="button"
+            className="am-btn"
+            aria-label="Perkecil peta"
+            title="Perkecil"
+            whileTap={{ scale: 0.9 }}
+            onClick={handleZoomOut}
+          >
+            <Minus size={16} strokeWidth={2.2} />
+          </motion.button>
+          <motion.button
+            type="button"
+            className="am-btn"
+            aria-label="Pusatkan kembali peta"
+            title="Pusatkan peta"
+            whileTap={{ scale: 0.9 }}
+            onClick={handleRecenter}
+          >
+            <Crosshair size={15} strokeWidth={2.1} />
+          </motion.button>
+        </div>
+      </motion.div>
+
       {children ? (
         <div
           className="map-overlay-slot"

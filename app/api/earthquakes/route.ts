@@ -7,6 +7,8 @@ import {
 import { EarthquakeQuerySchema } from '@/lib/earthquakes/schemas';
 import { getSeismicDataset } from '@/lib/earthquakes/service';
 
+export const dynamic = 'force-dynamic';
+
 const rateLimitWindowMs = 60_000;
 const maxRequestsPerWindow = 90;
 const ipHits = new Map<string, { count: number; resetAt: number }>();

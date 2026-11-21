@@ -1054,8 +1054,8 @@ body {
     position: fixed;
     left: 8px;
     right: 8px;
-    bottom: 8px;
-    z-index: 950;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    z-index: 970;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3676,7 +3676,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 500;
+  z-index: 750;
 }
 
 .map-overlay-slot > * {
@@ -3741,6 +3741,25 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (max-width: 679px) {
+  .map-panel {
+    top: 10px;
+    left: 10px;
+    width: auto;
+    max-width: calc(100% - 76px);
+    max-height: 62%;
+    border-radius: 16px;
+  }
+  .map-panel[open] {
+    width: min(264px, calc(100% - 20px));
+    max-width: calc(100% - 20px);
+  }
+  .map-panel summary {
+    padding: 9px 12px;
+    font-size: 0.74rem;
+  }
 }
 
 .map-panel fieldset {
@@ -3967,6 +3986,472 @@ body {
 .latest-tip::before,
 .picked-tip::before {
   display: none !important;
+}
+
+/* ==========================================================================
+   APPLE MAPS iOS 18 INSPIRED LEAFLET + MOTION UI
+   Lightweight Retina cartography, frosted glass controls & tactile callouts
+   ========================================================================== */
+
+.map-host {
+  --am-glass: rgba(252, 252, 250, 0.84);
+  --am-glass-hover: rgba(255, 255, 255, 0.98);
+  --am-glass-active: rgba(15, 15, 17, 0.08);
+  --am-border: rgba(17, 24, 39, 0.1);
+  --am-hairline: rgba(17, 24, 39, 0.08);
+  --am-ink: #111318;
+  --am-ink-muted: #5b6370;
+  --am-accent-bg: #111318;
+  --am-accent-ink: #ffffff;
+  --am-shadow:
+    0 10px 28px -8px rgba(15, 23, 42, 0.16),
+    0 2px 6px -1px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --am-callout-bg: rgba(17, 19, 24, 0.88);
+  --am-callout-ink: #ffffff;
+  --am-callout-border: rgba(255, 255, 255, 0.18);
+  background: #d5e8f6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.map-host[data-map-dark="true"] {
+  background: #0e1624;
+  --am-glass: rgba(20, 25, 34, 0.78);
+  --am-glass-hover: rgba(32, 40, 54, 0.92);
+  --am-glass-active: rgba(255, 255, 255, 0.14);
+  --am-border: rgba(255, 255, 255, 0.14);
+  --am-hairline: rgba(255, 255, 255, 0.1);
+  --am-ink: #f4f6f9;
+  --am-ink-muted: rgba(226, 232, 240, 0.72);
+  --am-accent-bg: #f4f6f9;
+  --am-accent-ink: #0b111b;
+  --am-shadow:
+    0 14px 34px -8px rgba(0, 0, 0, 0.54),
+    0 2px 8px -1px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --am-callout-bg: rgba(14, 18, 26, 0.88);
+  --am-callout-ink: #f8fafc;
+  --am-callout-border: rgba(255, 255, 255, 0.18);
+}
+
+.map-host .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+  outline: none !important;
+}
+
+/* Subtle Apple Maps iOS 18 Daylight / Midnight tile color grading */
+.map-host[data-map-style="explore"][data-map-dark="false"] .leaflet-tile-pane {
+  filter: saturate(1.06) contrast(1.02) brightness(1.01);
+}
+
+.map-host[data-map-style="explore"][data-map-dark="true"] .leaflet-tile-pane {
+  filter: brightness(1.08) contrast(1.08) saturate(1.12);
+}
+
+.map-host[data-map-style="explore"][data-map-dark="true"] .leaflet-labels-pane {
+  filter: brightness(1.22) contrast(1.1);
+}
+
+.map-host[data-map-style="topo"][data-map-dark="true"] .leaflet-tile-pane {
+  filter: brightness(0.84) contrast(1.08) saturate(0.86);
+}
+
+.map-host[data-map-style="satellite"] .leaflet-tile-pane {
+  filter: contrast(1.05) saturate(0.96);
+}
+
+/* Subtle photographic glass inner rim without darkening data */
+.am-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 450;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Floating Apple Maps iOS 18 Control Rails (above Leaflet marker/popup panes) */
+.am-controls-tr {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.am-controls-tr > * {
+  pointer-events: auto;
+}
+
+.am-zoom-stack {
+  position: absolute;
+  z-index: 800;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.am-zoom-stack[data-pos="topleft"] {
+  top: 12px;
+  left: 12px;
+}
+
+.am-zoom-stack[data-pos="topright"] {
+  top: 12px;
+  right: 60px;
+}
+
+.am-zoom-stack[data-pos="bottomleft"] {
+  bottom: 18px;
+  left: 12px;
+}
+
+.am-zoom-stack[data-pos="bottomright"] {
+  bottom: 24px;
+  right: 12px;
+}
+
+.am-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--am-glass);
+  backdrop-filter: blur(22px) saturate(185%);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid var(--am-border);
+  border-radius: 14px;
+  box-shadow: var(--am-shadow);
+  overflow: hidden;
+}
+
+.am-btn {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--am-ink);
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  transition:
+    background-color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 150ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 140ms cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+
+.am-btn + .am-btn {
+  border-top: 1px solid var(--am-hairline);
+}
+
+.am-btn:hover {
+  background: var(--am-glass-hover);
+}
+
+.am-btn:active {
+  transform: scale(0.94);
+}
+
+.am-btn:focus-visible {
+  outline: 2px solid var(--am-ink);
+  outline-offset: -2px;
+}
+
+.am-btn[aria-pressed="true"] {
+  background: var(--am-accent-bg);
+  color: var(--am-accent-ink);
+}
+
+.am-btn__compass {
+  display: grid;
+  place-items: center;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Apple Maps iOS 18 Style Picker Sheet */
+.am-style-sheet {
+  position: absolute;
+  top: 0;
+  right: 46px;
+  width: 248px;
+  padding: 10px;
+  background: var(--am-glass);
+  backdrop-filter: blur(26px) saturate(190%);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  border: 1px solid var(--am-border);
+  border-radius: 18px;
+  box-shadow: var(--am-shadow);
+  z-index: 20;
+  transform-origin: top right;
+  animation: amSheetIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes amSheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.am-style-sheet__title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--am-ink-muted);
+  margin: 0 2px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.am-style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.am-style-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--am-ink);
+  cursor: pointer;
+  border-radius: 12px;
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.am-style-card:active {
+  transform: scale(0.95);
+}
+
+.am-style-card__thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.am-style-card[aria-checked="true"] .am-style-card__thumb {
+  border-color: var(--am-ink);
+  box-shadow: 0 4px 12px -3px rgba(0, 0, 0, 0.28);
+}
+
+.am-style-card__thumb--explore {
+  background:
+    radial-gradient(circle at 68% 36%, #d5e7c9 0 26%, transparent 27%),
+    linear-gradient(142deg, #f3f1ea 0 46%, #b6daf3 46.5% 100%);
+}
+
+.map-host[data-map-dark="true"] .am-style-card__thumb--explore {
+  background:
+    radial-gradient(circle at 68% 36%, #243836 0 26%, transparent 27%),
+    linear-gradient(142deg, #222c3a 0 46%, #0b1626 46.5% 100%);
+}
+
+.am-style-card__thumb--topo {
+  background:
+    radial-gradient(circle at 35% 42%, rgba(255, 255, 255, 0.38) 0 16%, transparent 45%),
+    repeating-radial-gradient(
+      circle at 38% 45%,
+      transparent 0 6px,
+      rgba(95, 118, 92, 0.28) 6px 7px
+    ),
+    linear-gradient(155deg, #d7e2cf 0 54%, #9bc4df 54.5% 100%);
+}
+
+.map-host[data-map-dark="true"] .am-style-card__thumb--topo {
+  background:
+    repeating-radial-gradient(
+      circle at 38% 45%,
+      transparent 0 6px,
+      rgba(148, 174, 198, 0.24) 6px 7px
+    ),
+    linear-gradient(155deg, #27343e 0 54%, #0f2136 54.5% 100%);
+}
+
+.am-style-card__thumb--satellite {
+  background:
+    radial-gradient(circle at 62% 40%, #3a523c 0 24%, transparent 44%),
+    radial-gradient(circle at 28% 58%, #4d5f47 0 22%, transparent 45%),
+    linear-gradient(150deg, #1b3146 0%, #0d1d2f 100%);
+}
+
+.am-style-card__check {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--am-accent-bg);
+  color: var(--am-accent-ink);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.am-style-card__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--am-ink-muted);
+  white-space: nowrap;
+}
+
+.am-style-card[aria-checked="true"] .am-style-card__label {
+  color: var(--am-ink);
+  font-weight: 800;
+}
+
+/* Tactile 3D-Anchored Apple Maps Callout Markers */
+.am-marker-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+
+.am-callout {
+  position: absolute;
+  bottom: calc(50% + 26px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--am-callout-bg);
+  color: var(--am-callout-ink);
+  border: 1px solid var(--am-callout-border);
+  backdrop-filter: blur(14px) saturate(175%);
+  -webkit-backdrop-filter: blur(14px) saturate(175%);
+  box-shadow:
+    0 8px 22px -6px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.am-callout::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--am-callout-bg);
+}
+
+.am-callout__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c, #ea580c);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--c, #ea580c);
+}
+
+.am-marker-wrap:hover .am-callout {
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* Apple Maps Frosted Glass Popup Card (Leaflet) */
+.map-host .leaflet-popup-content-wrapper {
+  background: var(--am-glass) !important;
+  color: var(--am-ink) !important;
+  backdrop-filter: blur(22px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(185%) !important;
+  border: 1px solid var(--am-border) !important;
+  border-radius: 16px !important;
+  padding: 0 !important;
+  box-shadow: var(--am-shadow) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.map-host .leaflet-popup-content {
+  margin: 10px 14px !important;
+}
+
+.map-host .leaflet-popup-tip {
+  background: var(--am-glass) !important;
+  box-shadow: none !important;
+}
+
+.map-host .leaflet-popup-close-button {
+  color: var(--am-ink-muted) !important;
+  font-size: 16px !important;
+  padding: 5px 7px 0 0 !important;
+}
+
+.map-host .leaflet-div-icon {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.am-popup__title {
+  margin: 0 0 3px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--am-ink);
+  line-height: 1.3;
+  padding-right: 16px;
+}
+
+.am-popup__meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--am-ink-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 639px) {
+  .am-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .am-style-sheet {
+    right: 42px;
+    width: 224px;
+    padding: 8px;
+  }
+
+  .am-callout {
+    font-size: 0.66rem;
+    padding: 3px 8px;
+    max-width: 190px;
+  }
 }
 
 .legend {
@@ -4909,21 +5394,28 @@ body {
 .lightbox-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 900;
-  background: rgba(15, 15, 17, 0.62);
+  z-index: 940;
+  background: rgba(15, 15, 17, 0.56);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   justify-content: flex-end;
 }
 
 .sheet {
-  width: min(560px, 100vw);
+  width: min(560px, calc(100vw - 44px));
   height: 100dvh;
   background: var(--bg-card);
   border-left: 1px solid var(--line-strong);
+  border-radius: 24px 0 0 24px;
   box-shadow: var(--shadow-lg);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet__grabber-row {
+  display: none;
 }
 
 .sheet__head {
@@ -4932,6 +5424,7 @@ body {
   gap: 12px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
 }
 
 .sheet__heading {
@@ -4954,15 +5447,86 @@ body {
 .sheet__actions {
   display: flex;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .sheet__body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+@media (max-width: 768px) {
+  .sheet-backdrop {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 48px 14px 14px;
+  }
+
+  .sheet {
+    width: min(560px, 100%);
+    height: auto;
+    max-height: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: 24px;
+    box-shadow:
+      0 24px 60px -12px rgba(0, 0, 0, 0.42),
+      0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .sheet__grabber-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 10px 0 4px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    touch-action: none;
+  }
+
+  .sheet__grabber {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--line-strong);
+    opacity: 0.9;
+  }
+
+  .sheet__head {
+    padding: 8px 16px 14px;
+    gap: 10px;
+  }
+
+  .sheet__title {
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+
+  .sheet__body {
+    padding: 14px 16px 18px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 679px) {
+  /* Leave top header context visible & float cleanly above mobile-bottom-nav */
+  .sheet-backdrop {
+    padding: 52px 8px calc(76px + env(safe-area-inset-bottom)) 8px;
+  }
+
+  .sheet {
+    width: 100%;
+    border-radius: 22px;
+  }
 }
 
 .sheet__body h3 {
@@ -5621,7 +6185,7 @@ body {
 
 @media (max-width: 679px) {
   .toast-pill {
-    bottom: 84px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
     font-size: 0.73rem;
     padding: 8px 10px 8px 14px;
   }
